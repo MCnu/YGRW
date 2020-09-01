@@ -70,13 +70,13 @@ class GammaSteps(Stepper):
         return gengamma.rvs(self.bound_shape, self.bound_rate, 1)
 
 
-
 class AngleStepper(object):
     def __init__(self):
         pass
 
     def generate_angle(self):
         raise NotImplementedError
+
 
 class UniformAngle(object):
     def __init__(self):
@@ -90,11 +90,10 @@ class UniformAngle(object):
 class ExperimentalAngle(object):
     def __init__(self):
 
-        data_path = os.path.join(DATA_DIR, 'angle_correlation')
-        data = np.loadtxt(data_path, skiprows=1, delimiter=',')
+        data_path = os.path.join(DATA_DIR, "angle_correlation")
+        data = np.loadtxt(data_path, skiprows=1, delimiter=",")
         self.x = data[:, 1]
         self.y = data[:, 2]
-
 
     def generate_angle(self):
 
