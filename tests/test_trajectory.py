@@ -1,5 +1,5 @@
 import numpy as np
-from trajectory import Trajectory
+from YGRW.trajectory import Trajectory
 import pytest
 
 

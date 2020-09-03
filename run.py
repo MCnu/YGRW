@@ -4,8 +4,8 @@ Functions to perform a simulation of a trajectory.
 
 
 import numpy as np
-from trajectory import Trajectory
-from steps import Stepper, UniformSteps
+from YGRW.trajectory import Trajectory
+from YGRW.steps import Stepper, UniformSteps
 from tqdm import tqdm
 
 

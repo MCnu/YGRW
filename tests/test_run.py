@@ -1,4 +1,4 @@
-from run import generate_trajectory
+from YGRW.run import generate_trajectory
 import numpy as np
 
 
