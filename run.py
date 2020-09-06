@@ -5,7 +5,7 @@ Functions to perform a simulation of a trajectory.
 
 import numpy as np
 from YGRW.trajectory import Trajectory
-from YGRW.steps import Stepper, UniformSteps
+from YGRW.steps import Stepper, UniformSteps, ExperimentalAngleSteps
 from tqdm import tqdm
 
 
@@ -13,7 +13,7 @@ def generate_trajectory(
     timesteps: int,
     stepper: Stepper = UniformSteps(),
     initial_position: np.ndarray = np.array((0, 0)),
-    locus_radius: float = 0.08,
+    locus_radius: float = 0.01,
     bound_zone_thickness: float = 0,
     nuclear_radius: float = 1.0,
     bound_to_bound: float = 0.5,
@@ -22,13 +22,14 @@ def generate_trajectory(
     fail_cutoff: int = 200,
 ):
     """
+    All length-scale units are in micron.
 
     Parameters
     ----------
     initial_position: Initial position of the locus
     timesteps: Duration of simulation
-    locus_radius: Size of particle
-    nuc_radius: Size of nucleus
+    locus_radius: Size of particle (units of micron)
+    nuc_radius: Size of nucleus (units of micron)
 
     Returns: Trajectory object
     -------
@@ -54,9 +55,9 @@ def generate_trajectory(
         while failed_steps < fail_cutoff:
 
             if traj.is_bound:
-                cur_step = stepper.generate_bound_step()
+                cur_step = stepper.generate_bound_step(traj.prev_step, traj.prev_angle)
             else:
-                cur_step = stepper.generate_step()
+                cur_step = stepper.generate_step(traj.prev_step, traj.prev_angle)
 
             if traj.check_step_is_valid(cur_step, traj.is_bound):
                 traj.take_step(cur_step)

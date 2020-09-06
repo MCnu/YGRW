@@ -2,6 +2,10 @@ import os as os
 import sys as sys
 
 import numpy as np
+from collections import Counter
+
+CUR_DIR = os.path.dirname(__file__)
+DATA_DIR = os.path.join(CUR_DIR, "../data")
 
 from YGRW.steps import (
     Stepper,
@@ -49,4 +53,16 @@ def test_gamma_stepper():
 
 def test_experimental_angle():
 
-    pass
+    data_path = os.path.join(DATA_DIR, "angle_correlation.csv")
+    data = np.loadtxt(data_path, skiprows=1, delimiter=",", usecols=range(1, 3))
+
+    X = data[:, 0]
+    Y = data[:, 1]
+
+    n_samples = 5000
+
+    astepper = ExperimentalAngle()
+
+    angles = [float(abs(astepper.generate_angle())) for _ in range(n_samples)]
+
+    assert np.mean(angles) > 90

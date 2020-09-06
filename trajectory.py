@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from typing import Union, List
 
+deg = np.pi / 180
+
 
 class Trajectory(object):
     def __init__(
@@ -32,6 +34,28 @@ class Trajectory(object):
     @property
     def position(self):
         return self.positions[-1]
+
+    @property
+    def prev_step(self):
+        if len(self.positions) < 2:
+            return np.array((0, 0))
+        else:
+            return self.positions[-1] - self.positions[-2]
+
+    @property
+    def prev_angle(self):
+        prev_step = self.prev_step
+
+        if prev_step[0] == 0:
+            sign = np.sign(prev_step[1])
+            if sign == 1:
+                return 90
+            elif sign == -1:
+                return 180
+            elif sign == 0:
+                return 0
+        else:
+            return np.arctan(prev_step[1] / prev_step[0]) * deg
 
     @property
     def is_bound(self):

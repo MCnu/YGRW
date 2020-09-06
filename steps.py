@@ -3,6 +3,7 @@ from scipy.stats import gengamma
 import os as os
 from random import sample
 from abc import ABC, abstractmethod
+from YGRW.data_interp import JumpDistFromAngle
 
 CUR_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(CUR_DIR, "data")
@@ -115,10 +116,11 @@ class ExperimentalAngle(AngleStepper):
     """
 
     def __init__(self, data_path: str = None):
-        data_path = data_path or os.path.join(DATA_DIR, "angle_correlation")
-        data = np.loadtxt(data_path, skiprows=1, delimiter=",")
-        self.x = data[:, 1]
-        self.y = data[:, 2]
+        data_path = data_path or os.path.join(DATA_DIR, "angle_correlation.csv")
+        data = np.loadtxt(data_path, skiprows=1, delimiter=",", usecols=range(1, 3))
+        self.x = data[:, 0]
+        self.y = data[:, 1]
+        self.y /= np.sum(self.y)
         super().__init__()
 
     def generate_angle(self):
@@ -152,7 +154,51 @@ class ExperimentalSteps(Stepper, UniformAngle):
         return np.array((x_step, y_step))
 
 
-class ExperimentalAngleSteps(Stepper, ExperimentalAngle):
+class GammaAngleSteps(GammaSteps):
+    """
+    Draws from experimental observation of the distribution of angles,
+    and the distribution of magnitudes in those angles.
+    """
+
+    def __init__(
+        self,
+        shape: float = 0,
+        rate: float = 1,
+        bound_shape: float = None,
+        bound_rate: float = None,
+    ):
+
+        self.astepper = ExperimentalAngle()
+
+        super().__init__(
+            shape=shape, rate=rate, bound_shape=bound_shape, bound_rate=bound_rate
+        )
+
+    def generate_step(self, prev_step: np.ndarray = None, prev_angle: float = 0):
+
+        angle = self.astepper.generate_angle()
+        new_theta = prev_angle + angle
+
+        magnitude = gengamma.rvs(self.shape, self.rate, 1)
+
+        x_step = np.cos(new_theta) * magnitude
+        y_step = np.sin(new_theta) * magnitude
+        return np.array([x_step, y_step]).reshape(2)
+
+    def generate_bound_step(self, prev_step, prev_angle):
+
+        angle = self.astepper.generate_angle()
+        new_theta = prev_angle + angle
+
+        angle_mag = abs(angle)
+        magnitude = gengamma.rvs(self.bound_shape, self.bound_rate, 1)
+
+        x_step = np.cos(new_theta) * magnitude
+        y_step = np.sin(new_theta) * magnitude
+        return np.array([x_step, y_step]).reshape(2)
+
+
+class ExperimentalAngleSteps(Stepper):
     """
     Draws from experimental observation of the distribution of angles,
     and the distribution of magnitudes in those angles.
@@ -160,9 +206,25 @@ class ExperimentalAngleSteps(Stepper, ExperimentalAngle):
 
     def __init__(self):
 
-        super(Stepper).__init__()
-        super(ExperimentalAngle).__init__()
+        self.jdfa = JumpDistFromAngle()
 
-    def generate_step(self, prev_step: np.ndarray):
+        self.astepper = ExperimentalAngle()
 
-        self.generate_angle()
+        super().__init__()
+
+    def generate_step(self, prev_step: np.ndarray, prev_angle: float):
+
+        angle = self.astepper.generate_angle()
+        new_theta = prev_angle + angle
+
+        angle_mag = abs(angle)
+        jump_distribution = self.jdfa.distribution_from_angle(angle_mag)
+        jump_size = np.random.choice(self.jdfa.jump_values, size=1, p=jump_distribution)
+
+        x_step = np.cos(new_theta) * jump_size
+        y_step = np.sin(new_theta) * jump_size
+        return np.array([x_step, y_step]).reshape(2)
+
+    def generate_bound_step(self, prev_step, prev_angle):
+
+        return self.generate_step(prev_step, prev_angle) / 10
