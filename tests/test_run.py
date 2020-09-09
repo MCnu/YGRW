@@ -11,4 +11,3 @@ def test_basic_run():
 
     impossible_traj = generate_trajectory(1, nuclear_radius=0)
     assert len(impossible_traj) == 1
-

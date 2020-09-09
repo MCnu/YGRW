@@ -43,8 +43,8 @@ def generate_trajectory(
         nuclear_radius=nuclear_radius,
         locus_radius=locus_radius,
         bound_zone_thickness=bound_zone_thickness,
-        bound_to_bound = bound_to_bound,
-        unbound_to_bound = unbound_to_bound
+        bound_to_bound=bound_to_bound,
+        unbound_to_bound=unbound_to_bound,
     )
 
     taken_steps = 0

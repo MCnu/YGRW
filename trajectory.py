@@ -19,7 +19,7 @@ class Trajectory(object):
         nuclear_radius: float = 1.0,
         bound_zone_thickness: float = 0.1,
         bound_to_bound: float = None,
-        unbound_to_bound: float = None
+        unbound_to_bound: float = None,
     ):
 
         if initial_position is None:
@@ -33,7 +33,6 @@ class Trajectory(object):
 
         self.bound_to_bound = bound_to_bound
         self.unbound_to_bound = unbound_to_bound
-
 
     def __len__(self):
         return len(self.positions)
@@ -175,7 +174,7 @@ class Trajectory(object):
             else:
                 cur_highest = sorted(present_traj_files)[-1]
                 value = int(cur_highest[-9:-4])
-                output_file = "ygrw_traj_" + str(value+1).zfill(5)
+                output_file = "ygrw_traj_" + str(value + 1).zfill(5)
 
         if format == "csv" and output_file[-4:] != ".csv":
             output_file += ".csv"
