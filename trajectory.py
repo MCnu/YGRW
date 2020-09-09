@@ -222,14 +222,51 @@ def visualize_trajectory(
     plt.plot(x, -np.sqrt(rad ** 2 - x ** 2), color="black")
 
     positions = np.array(traj.positions)
-    plt.plot(positions[:, 0], positions[:, 1], zorder=-1)
+    bound_states = traj.bound_states
+    N = len(bound_states)
+    # plt.plot(positions[:, 0], positions[:, 1], zorder=-1)
+
+    bound_time = len(np.where(bound_states == True))
+
+    # TODO implement bound zone time
+
+    alpha_vals = np.linspace(0.2, 0.8, N)
+
+    for i, bound in zip(range(N - 1), bound_states[:-1]):
+        if not bound:
+            plt.plot(
+                positions[i : i + 2, 0],
+                positions[i : i + 2, 1],
+                color="orange",
+                alpha=alpha_vals[i],
+            )
+        else:
+            plt.plot(
+                positions[i : i + 2, 0], positions[i : i + 2, 1], color="navy", alpha=1
+            )
 
     # if traj.bound_zone_thickness:
+
+    if traj.bound_zone_thickness:
+        n, radii = 50, [
+            traj.nuclear_radius - traj.bound_zone_thickness,
+            traj.nuclear_radius,
+        ]
+        theta = np.linspace(0, 2 * np.pi, n, endpoint=True)
+        xs = np.outer(radii, np.cos(theta))
+        ys = np.outer(radii, np.sin(theta))
+
+        # in order to have a closed area, the circles
+        # should be traversed in opposite directions
+        xs[1, :] = xs[1, ::-1]
+        ys[1, :] = ys[1, ::-1]
+
+        plt.fill(np.ravel(xs), np.ravel(ys), "gray", alpha=0.2)
 
     if show_final_locus:
         pos = traj.position
         # rad = traj.locus_radius
-        plt.scatter((pos[0]), (pos[1]), color="red", s=100, marker="o", zorder=1)
+        plt.scatter((pos[0]), (pos[1]), color="red", s=50, marker="o", zorder=1)
         # x = np.linspace(pos[0]-rad, pos[0]+rad, 100)
         # plt.plot(x, np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
         # plt.plot(x, -np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
