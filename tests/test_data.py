@@ -35,7 +35,7 @@ def test_jump_dist_from_angle():
 
     jdfa = JumpDistFromAngle()
 
-    result = jdfa.jump_size_distribution_from_angle(2.5)
+    result = jdfa.distribution_from_angle(2.5)
     assert len(result) == 500
     # assert len(jdfa.jump_size_distribution_from_angle(0)) == 500
 

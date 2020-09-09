@@ -20,6 +20,8 @@ def generate_trajectory(
     unbound_to_bound: float = 0.2,
     watch_progress: bool = False,
     fail_cutoff: int = 200,
+    write_after: bool = False,
+    write_format: str = "csv",
 ):
     """
     All length-scale units are in micron.
@@ -41,6 +43,8 @@ def generate_trajectory(
         nuclear_radius=nuclear_radius,
         locus_radius=locus_radius,
         bound_zone_thickness=bound_zone_thickness,
+        bound_to_bound = bound_to_bound,
+        unbound_to_bound = unbound_to_bound
     )
 
     taken_steps = 0
@@ -74,6 +78,15 @@ def generate_trajectory(
             break
     if watch_progress:
         pbar.close()
+
+    if write_after:
+
+        optional_header = ""
+        optional_header += f"stepper:{stepper.__class__.__name__},"
+        traj.write_trajectory(
+            output_file=None, format=write_format, optional_header_add=optional_header
+        )
+
     return traj
 
 

@@ -51,7 +51,7 @@ class UniformSteps(Stepper):
         self.upper = upper
         super().__init__()
 
-    def generate_step(self):
+    def generate_step(self, prev_step=None, prev_angle=None):
         return np.random.uniform(self.lower, self.upper, size=2)
 
 
@@ -62,10 +62,10 @@ class GaussianSteps(Stepper):
         self.sig = sig
         super().__init__()
 
-    def generate_step(self):
+    def generate_step(self, prev_step=None, prev_angle=None):
         return np.random.normal(loc=self.mu, scale=self.sig, size=2)
 
-    def generate_bound_step(self):
+    def generate_bound_step(self, prev_step=None, prev_angle=None):
         return np.random.normal(loc=self.mu, scale=self.sig / 2, size=2)
 
 
@@ -85,7 +85,7 @@ class GammaSteps(Stepper):
 
         super().__init__()
 
-    def generate_step(self):
+    def generate_step(self, prev_step=None, prev_angle=None):
 
         # TODO incorporate anglestepper
         magnitude = gengamma.rvs(self.shape, self.rate, 1)
@@ -96,7 +96,7 @@ class GammaSteps(Stepper):
 
         return np.array((x_step, y_step))
 
-    def generate_bound_step(self):
+    def generate_bound_step(self, prev_step=None, prev_angle=None):
         return gengamma.rvs(self.bound_shape, self.bound_rate, 2)
 
 
@@ -140,7 +140,7 @@ class ExperimentalSteps(Stepper, UniformAngle):
         super(Stepper).__init__()
         super(UniformAngle).__init__()
 
-    def generate_step(self):
+    def generate_step(self, prev_step=None, prev_angle=None):
         """
         Generate a uniform random angle and magnitude.
         """

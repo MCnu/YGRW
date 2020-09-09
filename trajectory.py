@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from typing import Union, List
+import os as os
 
 deg = np.pi / 180
 
@@ -17,6 +18,8 @@ class Trajectory(object):
         locus_radius: float = 0.08,
         nuclear_radius: float = 1.0,
         bound_zone_thickness: float = 0.1,
+        bound_to_bound: float = None,
+        unbound_to_bound: float = None
     ):
 
         if initial_position is None:
@@ -27,6 +30,10 @@ class Trajectory(object):
         self.locus_radius = locus_radius
         self.nuclear_radius = nuclear_radius
         self.bound_zone_thickness = bound_zone_thickness
+
+        self.bound_to_bound = bound_to_bound
+        self.unbound_to_bound = unbound_to_bound
+
 
     def __len__(self):
         return len(self.positions)
@@ -138,11 +145,63 @@ class Trajectory(object):
         """
         raise NotImplementedError
 
-    def write_trajectory(self, output_file: str, format: str = "csv"):
+    def write_trajectory(
+        self,
+        output_file: str = None,
+        format: str = "csv",
+        optional_header_add: str = "",
+    ):
+        """
+        Write an array of X/Y postion and 0 for unbound, 1 for bound state.
+        Parameters
+        ----------
+        output_file
+        format
+        optional_header_add
+
+        Returns
+        -------
+
+        """
+
+        if output_file is None:
+            cwd = os.getcwd()
+            present_files = os.listdir(cwd)
+
+            present_traj_files = [f for f in present_files if "ygrw_traj" in f]
+
+            if len(present_traj_files) == 0:
+                output_file = "ygrw_traj_" + "00000"
+            else:
+                cur_highest = sorted(present_traj_files)[-1]
+                value = int(cur_highest[-9:-4])
+                output_file = "ygrw_traj_" + str(value+1).zfill(5)
+
+        if format == "csv" and output_file[-4:] != ".csv":
+            output_file += ".csv"
+
+        header = self.header_string() + optional_header_add
+        header += "\nX,Y,is_bound\n"
 
         with open(output_file, "w") as f:
-            pass
-        raise NotImplementedError
+            f.write(header)
+            for pos, bound in zip(self.positions, self.bound_states):
+                f.write(f"{pos[0]},{pos[1]},{1 if bound else 0}")
+
+    def header_string(
+        self,
+    ):
+        the_str = ""
+        the_str += f"locus_radius:{self.locus_radius},"
+        the_str += f"nuclear_radius:{self.nuclear_radius},"
+        the_str += f"bound_zone_thickness:{self.bound_zone_thickness},"
+        the_str += f"bound_to_bound:{self.bound_to_bound},"
+        the_str += f"unbound_to_bound:{self.unbound_to_bound},"
+
+        return the_str
+
+    def as_array(self):
+        return np.array(self.positions)
 
     def visualize(self, vis_params=None):
 
