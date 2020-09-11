@@ -105,17 +105,17 @@ class GaussianDragSteps(Stepper):
 
     def generate_step(self, prev_step=None, prev_angle=None):
 
-        x_drag, y_drag = self.compute_drag(prev_step, self.spring_constant)
+        x_drag, y_drag = compute_drag(prev_step, self.spring_constant)
         x_step, y_step = np.random.normal(loc=self.mu, scale=self.sig, size=2)
 
         return np.array((x_step + x_drag, y_step + y_drag))
 
     def generate_bound_step(self, prev_step=None, prev_angle=None):
 
-        x_drag, y_drag = self.compute_drag(prev_step, self.spring_constant)
+        x_drag, y_drag = compute_drag(prev_step, self.spring_constant)
         x_step, y_step = np.random.normal(loc=self.mu, scale=self.sig, size=2)
 
-        return np.array((x_step, y_step))
+        return np.array((x_step + x_drag, y_step + y_drag))
 
 
 class GammaSteps(Stepper):
@@ -231,7 +231,7 @@ class ExperimentalIndependentAngle(AngleStepper):
         self.y /= np.sum(self.y)
         super().__init__()
 
-    def generate_angle(self):
+    def generate_angle(self, prev_angle: None):
 
         angle = np.random.choice(self.x, size=1, p=self.y)
         sign = sample([-1, 1], k=1)
@@ -335,11 +335,11 @@ class ExperimentalAngleSteps(Stepper):
     and the distribution of magnitudes in those angles.
     """
 
-    def __init__(self):
+    def __init__(self, astepper=ExperimentalCorrelatedAngle()):
 
         self.jdfa = JumpDistFromAngle()
 
-        self.astepper = ExperimentalCorrelatedAngle()
+        self.astepper = astepper
 
         super().__init__()
 
