@@ -53,7 +53,7 @@ class AngleFromAngle:
             x=self.next_angles, y=y, z=self.angle_data.T, kind="linear"
         )
 
-    def generate_angle(self, input_angle: float):
+    def distribution_from_angle(self, input_angle: float):
         """
         Bins are constructed from angles [0,5], (5,10], (10,15], ... (175,180].
         which implies bin centers at 2.5, 7.5, 12.5 ...

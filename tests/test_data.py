@@ -61,23 +61,43 @@ def test_jump_dist_from_angle():
             data_vals / np.sum(data_vals), jdfa.distribution_from_angle(theta)
         )
 
-    # for i, theta in enumerate(np.arange(0, 180, 1)):
+    """
+    for i, theta in enumerate(np.arange(0, 180, 1)):
 
-    #    vals = jdfa.distribution_from_angle(theta)
-    #    plt.plot(jdfa.jump_values, vals/ np.sum(5*vals), alpha=.1,
-    #             label=str(theta),color=map(norm(theta)))
-    # plt.show()
+        vals = jdfa.distribution_from_angle(theta)
+        plt.plot(jdfa.jump_values, vals/ np.sum(5*vals), alpha=.1,
+                label=str(theta),color=map(norm(theta)))
+        plt.title("Step Size | Angle of New Step")
+    plt.show()
+    """
 
 
 def test_angle_from_angle():
 
     afa = AngleFromAngle()
 
-    result = afa.generate_angle(2.5)
+    result = afa.distribution_from_angle(2.5)
     assert len(result) == 512
 
     for i, theta in enumerate(np.arange(2.5, 180, 5)):
 
         data_vals = afa.angle_data[:, i]
-        vals = afa.generate_angle(theta)
+        vals = afa.distribution_from_angle(theta)
         assert np.allclose(data_vals / np.sum(data_vals), vals)
+
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+    from matplotlib.colors import Normalize
+
+    map = cm.get_cmap("RdBu")
+    norm = Normalize(vmin=0, vmax=180)
+    for i, theta in enumerate(np.arange(2.5, 180, 1)):
+
+        vals = afa.distribution_from_angle(theta)
+        plt.plot(afa.next_angles, vals/ np.sum(5*vals), alpha=.1,
+                 label=str(theta),color=map(norm(theta)))
+        plt.title("Angle Step | Angle Step")
+        #plt.legend()
+    plt.show()
+    """

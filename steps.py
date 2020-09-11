@@ -252,7 +252,7 @@ class ExperimentalCorrelatedAngle(AngleStepper):
 
     def generate_angle(self, prev_angle):
 
-        angle_distribution = self.afa.generate_angle(prev_angle)
+        angle_distribution = self.afa.distribution_from_angle(prev_angle)
 
         next_angle = np.random.choice(
             self.afa.next_angles, size=1, p=angle_distribution
