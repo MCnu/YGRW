@@ -231,7 +231,7 @@ class ExperimentalIndependentAngle(AngleStepper):
         self.y /= np.sum(self.y)
         super().__init__()
 
-    def generate_angle(self, prev_angle: None):
+    def generate_angle(self, prev_angle=None):
 
         angle = np.random.choice(self.x, size=1, p=self.y)
         sign = sample([-1, 1], k=1)
