@@ -1,7 +1,7 @@
 import numpy as np
 import os as os
 
-from YGRW.data_interp import JumpDistFromAngle
+from YGRW.data_interp import JumpDistFromAngle, AngleFromAngle
 
 TEST_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(TEST_DIR, "..", "data")
@@ -30,6 +30,14 @@ def test_open_data():
     )
     assert np.array_equal(data.shape, (500, 37))
 
+    angle_weighted_path = os.path.join(DATA_DIR, "successive_angle_probability.csv")
+    use_range = list(range(38))
+    data = np.loadtxt(
+        angle_weighted_path, skiprows=1, usecols=use_range[1:], delimiter=","
+    )
+    print(data.shape)
+    assert np.array_equal(data.shape, (512, 37))
+
 
 def test_jump_dist_from_angle():
 
@@ -48,9 +56,10 @@ def test_jump_dist_from_angle():
     norm = Normalize(vmin=0, vmax=180)
 
     for i, theta in enumerate(np.arange(2.5, 180, 5)):
-
-        vals = jdfa.distribution_from_angle(theta)
-        assert np.allclose(jdfa.angle_data[:, i], jdfa.distribution_from_angle(theta))
+        data_vals = jdfa.angle_data[:, i]
+        assert np.allclose(
+            data_vals / np.sum(data_vals), jdfa.distribution_from_angle(theta)
+        )
 
     # for i, theta in enumerate(np.arange(0, 180, 1)):
 
@@ -58,3 +67,17 @@ def test_jump_dist_from_angle():
     #    plt.plot(jdfa.jump_values, vals/ np.sum(5*vals), alpha=.1,
     #             label=str(theta),color=map(norm(theta)))
     # plt.show()
+
+
+def test_angle_from_angle():
+
+    afa = AngleFromAngle()
+
+    result = afa.generate_angle(2.5)
+    assert len(result) == 512
+
+    for i, theta in enumerate(np.arange(2.5, 180, 5)):
+
+        data_vals = afa.angle_data[:, i]
+        vals = afa.generate_angle(theta)
+        assert np.allclose(data_vals / np.sum(data_vals), vals)

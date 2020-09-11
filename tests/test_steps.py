@@ -15,7 +15,7 @@ from YGRW.steps import (
     ExperimentalSteps,
     AngleStepper,
     UniformAngle,
-    ExperimentalAngle,
+    ExperimentalIndependentAngle,
 )
 
 
@@ -61,7 +61,7 @@ def test_experimental_angle():
 
     n_samples = 5000
 
-    astepper = ExperimentalAngle()
+    astepper = ExperimentalIndependentAngle()
 
     angles = [float(abs(astepper.generate_angle())) for _ in range(n_samples)]
 
