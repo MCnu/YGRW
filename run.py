@@ -18,6 +18,7 @@ def generate_trajectory(
     nuclear_radius: float = 1.0,
     bound_to_bound: float = 0.5,
     unbound_to_bound: float = 0.2,
+    chain_length: float = 1.0,
     watch_progress: bool = False,
     fail_cutoff: int = 200,
     write_after: bool = False,
@@ -45,6 +46,7 @@ def generate_trajectory(
         bound_zone_thickness=bound_zone_thickness,
         bound_to_bound=bound_to_bound,
         unbound_to_bound=unbound_to_bound,
+        chain_length=chain_length,
     )
 
     taken_steps = 0

@@ -8,6 +8,7 @@ import matplotlib.patches as patches
 from typing import Union, List
 import os as os
 
+
 deg = np.pi / 180
 
 
@@ -15,11 +16,12 @@ class Trajectory(object):
     def __init__(
         self,
         initial_position: np.ndarray = None,
-        locus_radius: float = 0.08,
+        locus_radius: float = 0.01,
         nuclear_radius: float = 1.0,
         bound_zone_thickness: float = 0.1,
         bound_to_bound: float = None,
         unbound_to_bound: float = None,
+        chain_length: float = 1.0,
     ):
 
         if initial_position is None:
@@ -33,6 +35,7 @@ class Trajectory(object):
 
         self.bound_to_bound = bound_to_bound
         self.unbound_to_bound = unbound_to_bound
+        self.chain_length = chain_length
 
     def __len__(self):
         return len(self.positions)
@@ -69,7 +72,16 @@ class Trajectory(object):
             return False
         else:
             return self.bound_states[-1]
-
+        
+    @property
+    def dragball(self):
+        if len(self.positions) < 2:
+            return self.positions[-1]
+        else:
+            dragball_x = (self.positions[-1][0] + self.positions[-2][0])/2
+            dragball_y = (self.positions[-1][1] + self.positions[-2][1])/2
+            return np.array((dragball_x,dragball_y))
+        
     def take_step(self, step: np.ndarray):
         """
         Add step to the current position and append to the position list.
@@ -99,11 +111,12 @@ class Trajectory(object):
         """
 
         next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
-
+        next_locus_chain_extent = np.linalg.norm(self.position + step - self.dragball) + self.locus_radius
         # Check that locus doesn't leave bounds of the nucleus
         nuclear_check = self.nuclear_radius > next_locus_extent
-        if not nuclear_check:
-            return nuclear_check
+        chain_check = self.chain_length > next_locus_chain_extent
+        if not nuclear_check or not chain_check:
+            return False
         # If locus unbound, can always take next step, possibly leaving the bound zone
         if not is_bound:
             return True
@@ -185,7 +198,7 @@ class Trajectory(object):
         with open(output_file, "w") as f:
             f.write(header)
             for pos, bound in zip(self.positions, self.bound_states):
-                f.write(f"{pos[0]},{pos[1]},{1 if bound else 0}")
+                f.write(f"{pos[0]},{pos[1]},{1 if bound else 0}\n")
 
     def header_string(
         self,
@@ -196,6 +209,8 @@ class Trajectory(object):
         the_str += f"bound_zone_thickness:{self.bound_zone_thickness},"
         the_str += f"bound_to_bound:{self.bound_to_bound},"
         the_str += f"unbound_to_bound:{self.unbound_to_bound},"
+        the_str += f"chain_length:{self.chain_length}"
+        the_str += "\n"
 
         return the_str
 
@@ -206,7 +221,7 @@ class Trajectory(object):
 
         visualize_trajectory(self)
 
-        raise NotImplementedError
+        
 
 
 def visualize_trajectory(
