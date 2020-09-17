@@ -185,7 +185,7 @@ class Trajectory(object):
         with open(output_file, "w") as f:
             f.write(header)
             for pos, bound in zip(self.positions, self.bound_states):
-                f.write(f"{pos[0]},{pos[1]},{1 if bound else 0}")
+                f.write(f"{pos[0]},{pos[1]},{1 if bound else 0}\n")
 
     def header_string(
         self,
@@ -196,6 +196,7 @@ class Trajectory(object):
         the_str += f"bound_zone_thickness:{self.bound_zone_thickness},"
         the_str += f"bound_to_bound:{self.bound_to_bound},"
         the_str += f"unbound_to_bound:{self.unbound_to_bound},"
+        the_str += f"\n"
 
         return the_str
 
