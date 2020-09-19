@@ -223,8 +223,6 @@ class Trajectory(object):
 
         visualize_trajectory(self)
 
-        raise NotImplementedError
-
 
 def visualize_trajectory(
     traj: Union[Trajectory, List[Trajectory]], show_final_locus: bool = True
