@@ -27,6 +27,37 @@ class Stepper(ABC):
         return self.generate_step(*args, **kwargs)
 
 
+"""
+MCS greenhorn questions:will totalsteps inherit timesteps properly from the function call? should i not provide a default arg? not provide it at all?
+
+"""
+
+
+class FLEStepper(ABC):
+    """
+    Calculated CorrNoise done within run.py and defined in trajectory.py, is utilized
+    here to take individual steps, and hopefully we can figure how to dope in
+    bound steps after this works.
+    """
+
+    def __init__(
+        self,
+    ):
+
+        super().__init__()
+        pass
+
+    
+    def generate_step(self, *args, **kwargs):
+        return self.generate_step(*args, **kwargs)       
+
+    def generate_bound_step(self, *args, **kwargs):
+        """
+        If a child class does not have this method defined,
+        call child class' generate step method.
+        """
+        return self.generate_step(*args, **kwargs)
+
 class AngleStepper(ABC):
     """
     Generates an angle for a successive step defined with respect to the previous

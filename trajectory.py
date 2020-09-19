@@ -20,6 +20,9 @@ class Trajectory(object):
         bound_zone_thickness: float = 0.1,
         bound_to_bound: float = None,
         unbound_to_bound: float = None,
+        DiffCoef: float = None,
+        AnomExp: float = None,
+        deltat: float = None,
     ):
 
         if initial_position is None:
@@ -30,9 +33,11 @@ class Trajectory(object):
         self.locus_radius = locus_radius
         self.nuclear_radius = nuclear_radius
         self.bound_zone_thickness = bound_zone_thickness
-
         self.bound_to_bound = bound_to_bound
         self.unbound_to_bound = unbound_to_bound
+        self.DiffCoef = DiffCoef
+        self.AnomExp = AnomExp
+        self.deltat = deltat
 
     def __len__(self):
         return len(self.positions)
@@ -273,3 +278,45 @@ def visualize_trajectory(
         # plt.plot(x, -np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
 
     plt.show()
+
+
+def CorrNoise(
+    self,
+    timesteps,
+    deltat,
+    DiffCoef,
+    AnomExp,
+):
+    
+    halfalpha = AnomExp/2
+    NormMSD = ((2*DiffCoef)**0.5) * deltat**halfalpha
+    relatives = np.zeros(shape=(timesteps+1))
+    relatives[0] = 1.
+    
+    for k in range(0,(timesteps)):
+        relative_noise = np.real(0.5*((k+1)**(AnomExp) - (2*k)**(AnomExp) + (k-1)**(AnomExp)))
+        
+        relatives[(k+1)] = relative_noise
+    
+    
+    relarray = np.zeros(2*len(relatives) - 2)
+    relarray[0:len(relatives)] = relatives
+    revrel = np.flip(relatives)
+    relarray[len(relatives):] = revrel[1:-1]
+    
+    FirstFFT = np.real(np.fft.fft(relarray))/(2*timesteps)
+    
+    DeltaDist1D = np.ndarray(shape = (timesteps, 2), dtype = float, order = 'C')
+    randnorm_complex = (np.random.normal(size=(2*timesteps)) + 1j*np.random.normal(size=(2*timesteps)))
+    
+    
+    SecondFFT_X = np.fft.fft(np.multiply((np.lib.scimath.sqrt(FirstFFT)), randnorm_complex))
+    
+    randnorm_complex = (np.random.normal(size=(2*timesteps)) + 1j*np.random.normal(size=(2*timesteps)))
+    
+    SecondFFT_Y = np.fft.fft(np.multiply((np.lib.scimath.sqrt(FirstFFT)), randnorm_complex))
+    
+    DeltaDist1D[:,0] = NormMSD * np.real(SecondFFT_X[0:timesteps])
+    DeltaDist1D[:,1] = NormMSD * np.real(SecondFFT_Y[0:timesteps])
+    
+    return DeltaDist1D

@@ -5,7 +5,7 @@ Functions to perform a simulation of a trajectory.
 
 import numpy as np
 from YGRW.trajectory import Trajectory
-from YGRW.steps import Stepper, UniformSteps, ExperimentalAngleSteps
+from YGRW.steps import Stepper, UniformSteps, ExperimentalAngleSteps, FLEStepper
 from tqdm import tqdm
 
 
@@ -22,6 +22,9 @@ def generate_trajectory(
     fail_cutoff: int = 200,
     write_after: bool = False,
     write_format: str = "csv",
+    DiffCoef: float = 0.015,
+    AnomExp: float = 0.448,
+    deltat: float = 0.21,
 ):
     """
     All length-scale units are in micron.
@@ -45,9 +48,16 @@ def generate_trajectory(
         bound_zone_thickness=bound_zone_thickness,
         bound_to_bound=bound_to_bound,
         unbound_to_bound=unbound_to_bound,
+        DiffCoef=DiffCoef,
+        AnomExp=AnomExp,
     )
 
     taken_steps = 0
+    if stepper is FLEStepper():
+        DD1D = Trajectory.CorrNoise(
+            traj, timesteps=timesteps, DiffCoef=DiffCoef, AnomExp=AnomExp
+        )
+        return(DD1D)
     if watch_progress:
         pbar = tqdm(total=timesteps)
     while taken_steps < timesteps:
