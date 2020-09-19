@@ -5,7 +5,7 @@ Functions to perform a simulation of a trajectory.
 
 import numpy as np
 from YGRW.trajectory import Trajectory
-from YGRW.steps import Stepper, UniformSteps, ExperimentalAngleSteps
+from YGRW.steps import Stepper, UniformSteps, ExperimentalAngleSteps, FLESteps
 from tqdm import tqdm
 
 
@@ -47,6 +47,11 @@ def generate_trajectory(
         unbound_to_bound=unbound_to_bound,
     )
 
+    if isinstance(stepper, FLESteps):
+        assert stepper.step_batchsize == timesteps, (
+            "Batch for random generation" "must agree with run length."
+        )
+
     taken_steps = 0
     if watch_progress:
         pbar = tqdm(total=timesteps)
@@ -62,6 +67,8 @@ def generate_trajectory(
                 cur_step = stepper.generate_bound_step(traj.prev_step, traj.prev_angle)
             else:
                 cur_step = stepper.generate_step(traj.prev_step, traj.prev_angle)
+
+            traj.check_nucleus()
 
             if traj.check_step_is_valid(cur_step, traj.is_bound):
                 traj.take_step(cur_step)

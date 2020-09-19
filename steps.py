@@ -5,6 +5,8 @@ from random import sample
 from abc import ABC, abstractmethod
 from YGRW.data_interp import JumpDistFromAngle, AngleFromAngle
 
+from math import sqrt
+
 CUR_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(CUR_DIR, "data")
 
@@ -189,7 +191,7 @@ class GammaDragSteps(Stepper):
         magnitude = gengamma.rvs(self.shape, self.rate, 1)
         angle = np.random.uniform(low=-180, high=180, size=1)
 
-        x_drag, y_drag = self.compute_drag(prev_step, self.spring_constant)
+        x_drag, y_drag = compute_drag(prev_step, self.spring_constant)
 
         x_step = np.cos(angle * deg) * magnitude + x_drag
         y_step = np.sin(angle * deg) * magnitude + y_drag
@@ -359,6 +361,122 @@ class ExperimentalAngleSteps(Stepper):
     def generate_bound_step(self, prev_step, prev_angle):
 
         return self.generate_step(prev_step, prev_angle) / 10
+
+
+class FLESteps(Stepper):
+    def __init__(
+        self,
+        step_batchsize: int = 200,
+        gamma: float = 0.015,
+        alpha: float = 0.448,
+        dt: float = 0.210,
+        fle_random_seed: int = None,
+    ):
+
+        self.H = alpha / 2
+        self.gamma = gamma
+        self.alpha = alpha
+        self.dt = dt
+        self.cur_step = 0
+        self.step_batchsize = step_batchsize
+
+        self.pre_x, self.pre_y = self._generate_correlated_noise(
+            steps=step_batchsize, fle_random_seed=fle_random_seed
+        )
+        super().__init__()
+
+    def generate_step(self, *args, **kwargs):
+
+        if self.cur_step == self.step_batchsize:
+            self.pre_x, self.pre_y = self._generate_correlated_noise(
+                steps=self.step_batchsize
+            )
+            self.cur_step = 0
+
+        dx = self.pre_x[self.cur_step]
+        dy = self.pre_y[self.cur_step]
+        self.cur_step += 1
+        return np.array([dx, dy]).reshape(2)
+
+    def generate_bound_step(self, *args, **kwargs):
+
+        return self.generate_step(*args, **kwargs) / 10
+
+    def _generate_correlated_noise(
+        self,
+        steps: int = None,
+        fle_random_seed: int = None,
+    ):
+        """
+        Generates a series of correlated noise values.
+        Based on the implementation by Yaojun Zhang in
+        J.S. Lucas, Y. Zhang, O.K. Dudko, and C. Murre,
+        Cell 158, 339–352, 2014
+        https://doi.org/10.1016/j.cell.2014.05.036
+
+        Which is based on the algorithm of
+        C.R. Dietrich and G.N. Newsam,
+        SIAM J. Sci. Comput., 18(4), 1088–1107.
+        https://doi.org/10.1137/S1064827592240555
+
+        Parameters
+        ----------
+        steps
+        dt
+        gamma
+        alpha: Correlation parameter. 1 is no correlation, [1,2] is positive correlation,
+                (0,1) is anticorrelation.
+
+        Returns
+        -------
+        """
+        if steps is None:
+            steps = self.step_batchsize
+        # Set up prefactors to be used later
+        # Compute Hurst exponent
+        H = self.alpha / 2
+        # Compute length scale
+        norm_msd = (sqrt(2 * self.gamma)) * self.dt ** H
+
+        # Compute correlation vector R.
+        pre_r = np.zeros(shape=(steps + 1))
+        pre_r[0] = 1.0
+        for k in range(1, steps + 1):
+            fd_addition = (
+                (k + 1) ** self.alpha - 2 * (k ** self.alpha) + (k - 1) ** self.alpha
+            ) / 2
+            pre_r[k] = fd_addition
+        nrel = len(pre_r)
+        r = np.zeros(2 * nrel - 2)
+        r[:nrel] = pre_r
+        reverse_r = np.flip(pre_r)
+        r[nrel - 1 :] = reverse_r[:-1]
+
+        # Fourier transform pre-computed values earlier
+        # Corresponds to step a on page 1091 of Dietrich & Newsam,
+        s = np.real(np.fft.fft(r)) / (2 * steps)
+        strans = np.lib.scimath.sqrt(s)
+
+        if fle_random_seed:
+            np.random.seed(fle_random_seed)
+
+        # Generate randomly distributed points in the complex plane (step b)
+        randnorm_complex = np.random.normal(size=(2 * steps)) + 1j * np.random.normal(
+            size=(2 * steps)
+        )
+        # Compute FFT: (step c),
+        second_fft_x = np.fft.fft(np.multiply(strans, randnorm_complex))
+
+        randnorm_complex = np.random.normal(size=(2 * steps)) + 1j * np.random.normal(
+            size=(2 * steps)
+        )
+        second_fft_y = np.fft.fft(np.multiply(strans, randnorm_complex))
+
+        # Store correlated noise values. Step d.
+        x_steps = norm_msd * np.real(second_fft_x[0:steps])
+        y_steps = norm_msd * np.real(second_fft_y[0:steps])
+
+        return x_steps, y_steps
 
 
 def compute_drag(prev_step: None, spring_constant: float = -0.5):

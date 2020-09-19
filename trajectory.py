@@ -83,6 +83,22 @@ class Trajectory(object):
         """
         self.positions.append(self.position + step)
 
+    def check_nucleus(
+        self, step, collision_style: str = "reflect"
+    ) -> Union[np.ndarray, bool]:
+
+        next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
+
+        nuclear_check = self.nuclear_radius > next_locus_extent
+
+        if not nuclear_check and collision_style == "reflect":
+
+            overstep = next_locus_extent - self.nuclear_radius
+            return step - overstep * step
+
+        if not nuclear_check and collision_style == "reject":
+            return nuclear_check
+
     def check_step_is_valid(self, step: np.ndarray, is_bound: bool = False) -> bool:
         """
         Return true/false if a proposed step leaves the nucleus or not.
