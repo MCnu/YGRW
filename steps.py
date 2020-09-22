@@ -371,6 +371,7 @@ class FLESteps(Stepper):
         alpha: float = 0.448,
         dt: float = 0.210,
         fle_random_seed: int = None,
+        bound_steps: str = "gauss",
     ):
 
         self.H = alpha / 2
@@ -379,10 +380,15 @@ class FLESteps(Stepper):
         self.dt = dt
         self.cur_step = 0
         self.step_batchsize = step_batchsize
+        self.bound_steps = bound_steps
 
         self.pre_x, self.pre_y = self._generate_correlated_noise(
             steps=step_batchsize, fle_random_seed=fle_random_seed
         )
+
+        self.boundstepper = None
+        if self.bound_steps == "scale":
+            self.boundstepper = GaussianSteps(mu=0, sig=0.1)
         super().__init__()
 
     def generate_step(self, *args, **kwargs):
@@ -399,8 +405,11 @@ class FLESteps(Stepper):
         return np.array([dx, dy]).reshape(2)
 
     def generate_bound_step(self, *args, **kwargs):
+        if self.bound_steps == "gauss":
+            return self.boundstepper.generate_step()
 
-        return self.generate_step(*args, **kwargs) / 10
+        elif self.bound_steps == "scaled":
+            return self.generate_step(*args, **kwargs) / 10
 
     def _generate_correlated_noise(
         self,
@@ -432,11 +441,6 @@ class FLESteps(Stepper):
         """
         if steps is None:
             steps = self.step_batchsize
-        # Set up prefactors to be used later
-        # Compute Hurst exponent
-        H = self.alpha / 2
-        # Compute length scale
-        norm_msd = (sqrt(2 * self.gamma)) * self.dt ** H
 
         # Compute correlation vector R.
         pre_r = np.zeros(shape=(steps + 1))
@@ -471,6 +475,17 @@ class FLESteps(Stepper):
             size=(2 * steps)
         )
         second_fft_y = np.fft.fft(np.multiply(strans, randnorm_complex))
+
+        # Scale results for final use.
+        # Hurst exponent
+        H = self.alpha / 2
+        # Length scale for process
+        norm_msd = sqrt(2 * self.gamma) * self.dt ** H
+
+        # If gamma is ordinarily in m^2/s,
+        # to convert to m^2/ s^alpha,
+        # multiply by  1 s / s^alpha,
+        # 1 s /
 
         # Store correlated noise values. Step d.
         x_steps = norm_msd * np.real(second_fft_x[0:steps])
