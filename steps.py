@@ -371,7 +371,7 @@ class FLESteps(Stepper):
         alpha: float = 0.448,
         dt: float = 0.210,
         fle_random_seed: int = None,
-        bound_steps: str = "gauss",
+        boundstepper: Stepper = None
     ):
 
         self.H = alpha / 2
@@ -380,15 +380,13 @@ class FLESteps(Stepper):
         self.dt = dt
         self.cur_step = 0
         self.step_batchsize = step_batchsize
-        self.bound_steps = bound_steps
 
         self.pre_x, self.pre_y = self._generate_correlated_noise(
             steps=step_batchsize, fle_random_seed=fle_random_seed
         )
 
-        self.boundstepper = None
-        if self.bound_steps == "scale":
-            self.boundstepper = GaussianSteps(mu=0, sig=0.1)
+        self.boundstepper = boundstepper
+
         super().__init__()
 
     def generate_step(self, *args, **kwargs):
@@ -405,10 +403,11 @@ class FLESteps(Stepper):
         return np.array([dx, dy]).reshape(2)
 
     def generate_bound_step(self, *args, **kwargs):
-        if self.bound_steps == "gauss":
+
+        if self.boundstepper != None:
             return self.boundstepper.generate_step()
 
-        elif self.bound_steps == "scaled":
+        else:
             return self.generate_step(*args, **kwargs) / 10
 
     def _generate_correlated_noise(
