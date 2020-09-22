@@ -51,7 +51,7 @@ class Trajectory(object):
     @property
     def prev_angle(self):
         prev_step = self.prev_step
-
+        
         if prev_step[0] == 0:
             sign = np.sign(prev_step[1])
             if sign == 1:

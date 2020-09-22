@@ -65,6 +65,7 @@ class GaussianSteps(Stepper):
         super().__init__()
 
     def generate_step(self, prev_step=None, prev_angle=None):
+        print(np.random.normal(loc=self.mu, scale=self.sig, size=2))
         return np.random.normal(loc=self.mu, scale=self.sig, size=2)
 
     def generate_bound_step(self, prev_step=None, prev_angle=None):
@@ -123,33 +124,40 @@ class GaussianDragSteps(Stepper):
 class GammaSteps(Stepper):
     def __init__(
         self,
-        shape: float = 0,
-        rate: float = 1,
-        bound_shape: float = None,
-        bound_rate: float = None,
+        shape: float = 3,
+        rate: float = 45,
+        bound_shape: float = 2.7,
+        bound_rate: float = 72,
     ):
         self.shape = shape
-        self.rate = rate
+        self.scale = 1/rate
 
         self.bound_shape = bound_shape or shape
-        self.bound_rate = bound_rate or rate
+        self.bound_scale = 1/bound_rate or 1/rate
 
         super().__init__()
 
     def generate_step(self, prev_step=None, prev_angle=None):
 
         # TODO incorporate anglestepper
-        magnitude = gengamma.rvs(self.shape, self.rate, 1)
+        magnitude = np.random.gamma(shape = self.shape, scale = self.scale, size = 1)
         angle = np.random.uniform(low=-180, high=180, size=1)
 
-        x_step = np.cos(angle * deg) * magnitude
-        y_step = np.sin(angle * deg) * magnitude
-
+        x_step = float(np.cos(angle * deg) * magnitude)
+        y_step = float(np.sin(angle * deg) * magnitude)
+        
+        
         return np.array((x_step, y_step))
 
     def generate_bound_step(self, prev_step=None, prev_angle=None):
-        return gengamma.rvs(self.bound_shape, self.bound_rate, 2)
+        magnitude = np.random.gamma(shape = self.bound_shape, scale = self.bound_scale, size = 1)
+        angle = np.random.uniform(low=-180, high=180, size=1)
 
+        x_step = float(np.cos(angle * deg) * magnitude)
+        y_step = float(np.sin(angle * deg) * magnitude)
+        
+        
+        return np.array((x_step, y_step))
 
 class GammaDragSteps(Stepper):
     def __init__(
@@ -371,7 +379,7 @@ class FLESteps(Stepper):
         alpha: float = 0.448,
         dt: float = 0.210,
         fle_random_seed: int = None,
-        bound_steps: str = "gauss",
+        bound_steps: str = "gamma",
     ):
 
         self.H = alpha / 2
@@ -387,8 +395,8 @@ class FLESteps(Stepper):
         )
 
         self.boundstepper = None
-        if self.bound_steps == "scale":
-            self.boundstepper = GaussianSteps(mu=0, sig=0.1)
+        if self.bound_steps == "gamma":
+            self.boundstepper = GammaSteps(3,45,2.7,72)
         super().__init__()
 
     def generate_step(self, *args, **kwargs):
@@ -405,11 +413,14 @@ class FLESteps(Stepper):
         return np.array([dx, dy]).reshape(2)
 
     def generate_bound_step(self, *args, **kwargs):
-        if self.bound_steps == "gauss":
-            return self.boundstepper.generate_step()
+        if self.bound_steps == "gamma":
+            return self.boundstepper.generate_bound_step()
+        
+        elif self.bound_steps == "gauss":
+            return self.boundstepper.generate_Bound_step()
 
         elif self.bound_steps == "scaled":
-            return self.generate_step(*args, **kwargs) / 10
+            return self.generate_bound_step(*args, **kwargs) / 10
 
     def _generate_correlated_noise(
         self,
