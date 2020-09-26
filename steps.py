@@ -393,12 +393,10 @@ class FLESteps(Stepper):
         self.step_batchsize = step_batchsize
         self.bound_steps = bound_steps
         #TODO figure out WHY bound a and g are assigned as tuples
-        self.pre_x, self.pre_y = self._generate_correlated_noise(
+        self.pre_x, self.pre_y, self.bound_pre_x, self.bound_pre_y = self._generate_correlated_noise(
             steps=step_batchsize, fle_random_seed=fle_random_seed
         )
-        self.bound_pre_x, self.bound_pre_y = self._generate_bound_correlated_noise(
-            steps=step_batchsize, fle_random_seed=fle_random_seed
-        )
+       
        
         self.boundstepper = None
         if self.bound_steps == "gamma":
@@ -409,7 +407,7 @@ class FLESteps(Stepper):
     def generate_step(self, *args, **kwargs):
 
         if self.cur_step == self.step_batchsize:
-            self.pre_x, self.pre_y = self._generate_correlated_noise(
+            self.pre_x, self.pre_y, self.bound_pre_x, self.bound_pre_y = self._generate_correlated_noise(
                 steps=self.step_batchsize
             )
             self.cur_step = 0
@@ -422,7 +420,7 @@ class FLESteps(Stepper):
     def generate_bound_step(self, *args, **kwargs):
         if self.bound_steps == "FLE":
             if self.cur_step == self.step_batchsize:
-                self.bound_pre_x, self.bound_pre_y = self._generate_bound_correlated_noise(
+                self.pre_x, self.pre_y, self.bound_pre_x, self.bound_pre_y = self._generate_correlated_noise(
                 steps=self.step_batchsize
                 )
                 self.cur_step = 0
@@ -509,9 +507,10 @@ class FLESteps(Stepper):
         # Scale results for final use.
         # Hurst exponent
         H = self.alpha / 2
+        bound_H = self.bound_alpha[0] / 2
         # Length scale for process
         norm_msd = sqrt(2 * self.gamma) * self.dt ** H
-
+        bound_norm_msd = sqrt(2 * self.bound_gamma[0]) * self.dt ** bound_H
         # If gamma is ordinarily in m^2/s,
         # to convert to m^2/ s^alpha,
         # multiply by  1 s / s^alpha,
@@ -520,92 +519,12 @@ class FLESteps(Stepper):
         # Store correlated noise values. Step d.
         x_steps = norm_msd * np.real(second_fft_x[0:steps])
         y_steps = norm_msd * np.real(second_fft_y[0:steps])
+        bound_x_steps = bound_norm_msd * np.real(second_fft_x[0:steps])
+        bound_y_steps = bound_norm_msd * np.real(second_fft_y[0:steps])
 
-        return x_steps, y_steps
+        return x_steps, y_steps, bound_x_steps, bound_y_steps
     
-    def _generate_bound_correlated_noise(
-        self,
-        steps: int = None,
-        fle_random_seed: int = None,
-    ):
-        """
-        Generates a series of correlated noise values.
-        Based on the implementation by Yaojun Zhang in
-        J.S. Lucas, Y. Zhang, O.K. Dudko, and C. Murre,
-        Cell 158, 339–352, 2014
-        https://doi.org/10.1016/j.cell.2014.05.036
 
-        Which is based on the algorithm of
-        C.R. Dietrich and G.N. Newsam,
-        SIAM J. Sci. Comput., 18(4), 1088–1107.
-        https://doi.org/10.1137/S1064827592240555
-
-        Parameters
-        ----------
-        steps
-        dt
-        gamma
-        alpha: Correlation parameter. 1 is no correlation, [1,2] is positive correlation,
-                (0,1) is anticorrelation.
-
-        Returns
-        -------
-        """
-        if steps is None:
-            steps = self.step_batchsize
-
-        # Compute correlation vector R.
-        # TODO as you can see, I have to specify the position in self.bound_
-        pre_r = np.zeros(shape=(steps + 1))
-        pre_r[0] = 1.0
-        for k in range(1, steps + 1):
-            fd_addition = (
-                (k + 1) ** self.bound_alpha[0] - 2 * (k ** self.bound_alpha[0]) + (k - 1) ** self.bound_alpha[0]
-            ) / 2
-            pre_r[k] = fd_addition
-        nrel = len(pre_r)
-        r = np.zeros(2 * nrel - 2)
-        r[:nrel] = pre_r
-        reverse_r = np.flip(pre_r)
-        r[nrel - 1 :] = reverse_r[:-1]
-
-        # Fourier transform pre-computed values earlier
-        # Corresponds to step a on page 1091 of Dietrich & Newsam,
-        s = np.real(np.fft.fft(r)) / (2 * steps)
-        strans = np.lib.scimath.sqrt(s)
-
-        if fle_random_seed:
-            np.random.seed(fle_random_seed)
-
-        # Generate randomly distributed points in the complex plane (step b)
-        randnorm_complex = np.random.normal(size=(2 * steps)) + 1j * np.random.normal(
-            size=(2 * steps)
-        )
-        # Compute FFT: (step c),
-        second_fft_x = np.fft.fft(np.multiply(strans, randnorm_complex))
-
-        randnorm_complex = np.random.normal(size=(2 * steps)) + 1j * np.random.normal(
-            size=(2 * steps)
-        )
-        second_fft_y = np.fft.fft(np.multiply(strans, randnorm_complex))
-
-        # Scale results for final use.
-        # Hurst exponent
-        H = self.bound_alpha[0] / 2
-        # Length scale for process
-        norm_msd = sqrt(2 * self.bound_gamma[0]) * self.dt ** H
-
-        # If gamma is ordinarily in m^2/s,
-        # to convert to m^2/ s^alpha,
-        # multiply by  1 s / s^alpha,
-        # 1 s /
-
-        # Store correlated noise values. Step d.
-        x_steps = norm_msd * np.real(second_fft_x[0:steps])
-        y_steps = norm_msd * np.real(second_fft_y[0:steps])
-
-        return x_steps, y_steps
-    
 
 
 def compute_drag(prev_step: None, spring_constant: float = -0.5):
