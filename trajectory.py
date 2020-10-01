@@ -90,14 +90,26 @@ class Trajectory(object):
         next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
 
         nuclear_check = self.nuclear_radius > next_locus_extent
-
+        
+        bound_check = (self.nuclear_radius - self.bound_zone_thickness) < next_locus_extent
+        
         if not nuclear_check and collision_style == "reflect":
-
-            overstep = next_locus_extent - self.nuclear_radius
-            return step - overstep * step
+            
+            
+            step[0] = (2 * self.nuclear_radius - next_locus_extent)*step[0] / next_locus_extent
+            step[1] = (2 * self.nuclear_radius - next_locus_extent)*step[1] / next_locus_extent
+            
+            return step
 
         if not nuclear_check and collision_style == "reject":
             return nuclear_check
+        
+        if self.is_bound and not bound_check:
+            step[0] = (2 * (self.nuclear_radius - self.bound_zone_thickness) - next_locus_extent)*step[0] / next_locus_extent
+            step[1] = (2 * (self.nuclear_radius - self.bound_zone_thickness) - next_locus_extent)*step[1] / next_locus_extent
+            
+        if nuclear_check:
+            return step
 
     def check_step_is_valid(self, step: np.ndarray, is_bound: bool = False) -> bool:
         """
@@ -113,7 +125,9 @@ class Trajectory(object):
         -------
 
         """
-
+        
+        
+        
         next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
 
         # Check that locus doesn't leave bounds of the nucleus
