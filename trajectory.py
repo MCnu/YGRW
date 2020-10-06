@@ -51,7 +51,7 @@ class Trajectory(object):
     @property
     def prev_angle(self):
         prev_step = self.prev_step
-        
+
         if prev_step[0] == 0:
             sign = np.sign(prev_step[1])
             if sign == 1:
@@ -90,24 +90,47 @@ class Trajectory(object):
         next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
 
         nuclear_check = self.nuclear_radius > next_locus_extent
-        
-        bound_check = (self.nuclear_radius - self.bound_zone_thickness) < next_locus_extent
-        
+
+        bound_check = (
+            self.nuclear_radius - self.bound_zone_thickness
+        ) < next_locus_extent
+
         if not nuclear_check and collision_style == "reflect":
-            
-            
-            step[0] = (2 * self.nuclear_radius - next_locus_extent)*step[0] / next_locus_extent
-            step[1] = (2 * self.nuclear_radius - next_locus_extent)*step[1] / next_locus_extent
-            
+
+            step[0] = (
+                (2 * self.nuclear_radius - next_locus_extent)
+                * step[0]
+                / next_locus_extent
+            )
+            step[1] = (
+                (2 * self.nuclear_radius - next_locus_extent)
+                * step[1]
+                / next_locus_extent
+            )
+
             return step
 
         if not nuclear_check and collision_style == "reject":
             return nuclear_check
-        
+
         if self.is_bound and not bound_check:
-            step[0] = (2 * (self.nuclear_radius - self.bound_zone_thickness) - next_locus_extent)*step[0] / next_locus_extent
-            step[1] = (2 * (self.nuclear_radius - self.bound_zone_thickness) - next_locus_extent)*step[1] / next_locus_extent
-            
+            step[0] = (
+                (
+                    2 * (self.nuclear_radius - self.bound_zone_thickness)
+                    - next_locus_extent
+                )
+                * step[0]
+                / next_locus_extent
+            )
+            step[1] = (
+                (
+                    2 * (self.nuclear_radius - self.bound_zone_thickness)
+                    - next_locus_extent
+                )
+                * step[1]
+                / next_locus_extent
+            )
+
         if nuclear_check:
             return step
 
@@ -125,9 +148,7 @@ class Trajectory(object):
         -------
 
         """
-        
-        
-        
+
         next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
 
         # Check that locus doesn't leave bounds of the nucleus

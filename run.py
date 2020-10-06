@@ -69,9 +69,8 @@ def generate_trajectory(
                 cur_step = stepper.generate_step(traj.prev_step, traj.prev_angle)
 
             # TODO implement check nucleus with reflect/ricochet
-            
+
             cur_step = np.array(traj.check_nucleus(cur_step))
-            
 
             if traj.check_step_is_valid(cur_step, traj.is_bound):
                 traj.take_step(cur_step)

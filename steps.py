@@ -130,34 +130,35 @@ class GammaSteps(Stepper):
         bound_rate: float = 72,
     ):
         self.shape = shape
-        self.scale = 1/rate
+        self.scale = 1 / rate
 
         self.bound_shape = bound_shape or shape
-        self.bound_scale = 1/bound_rate or 1/rate
+        self.bound_scale = 1 / bound_rate or 1 / rate
 
         super().__init__()
 
     def generate_step(self, prev_step=None, prev_angle=None):
 
         # TODO incorporate anglestepper
-        magnitude = np.random.gamma(shape = self.shape, scale = self.scale, size = 1)
+        magnitude = np.random.gamma(shape=self.shape, scale=self.scale, size=1)
         angle = np.random.uniform(low=-180, high=180, size=1)
 
         x_step = float(np.cos(angle * deg) * magnitude)
         y_step = float(np.sin(angle * deg) * magnitude)
-        
-        
+
         return np.array((x_step, y_step))
 
     def generate_bound_step(self, prev_step=None, prev_angle=None):
-        magnitude = np.random.gamma(shape = self.bound_shape, scale = self.bound_scale, size = 1)
+        magnitude = np.random.gamma(
+            shape=self.bound_shape, scale=self.bound_scale, size=1
+        )
         angle = np.random.uniform(low=-180, high=180, size=1)
 
         x_step = float(np.cos(angle * deg) * magnitude)
         y_step = float(np.sin(angle * deg) * magnitude)
-        
-        
+
         return np.array((x_step, y_step))
+
 
 class GammaDragSteps(Stepper):
     def __init__(
@@ -386,30 +387,36 @@ class FLESteps(Stepper):
 
         self.gamma = gamma
         self.alpha = alpha
-        self.bound_gamma = bound_gamma,
-        self.bound_alpha = bound_alpha,
+        self.bound_gamma = bound_gamma
+        self.bound_alpha = bound_alpha
         self.dt = dt
         self.cur_step = 0
         self.step_batchsize = step_batchsize
         self.bound_steps = bound_steps
-        #TODO figure out WHY bound a and g are assigned as tuples
-        self.pre_x, self.pre_y, self.bound_pre_x, self.bound_pre_y = self._generate_correlated_noise(
+        (
+            self.pre_x,
+            self.pre_y,
+            self.bound_pre_x,
+            self.bound_pre_y,
+        ) = self._generate_correlated_noise(
             steps=step_batchsize, fle_random_seed=fle_random_seed
         )
-       
-       
+
         self.boundstepper = None
         if self.bound_steps == "gamma":
-            self.boundstepper = GammaSteps(3,45,2.7,72)
-        
+            self.boundstepper = GammaSteps(3, 45, 2.7, 72)
+
         super().__init__()
 
     def generate_step(self, *args, **kwargs):
 
         if self.cur_step == self.step_batchsize:
-            self.pre_x, self.pre_y, self.bound_pre_x, self.bound_pre_y = self._generate_correlated_noise(
-                steps=self.step_batchsize
-            )
+            (
+                self.pre_x,
+                self.pre_y,
+                self.bound_pre_x,
+                self.bound_pre_y,
+            ) = self._generate_correlated_noise(steps=self.step_batchsize)
             self.cur_step = 0
 
         dx = self.pre_x[self.cur_step]
@@ -420,21 +427,24 @@ class FLESteps(Stepper):
     def generate_bound_step(self, *args, **kwargs):
         if self.bound_steps == "FLE":
             if self.cur_step == self.step_batchsize:
-                self.pre_x, self.pre_y, self.bound_pre_x, self.bound_pre_y = self._generate_correlated_noise(
-                steps=self.step_batchsize
-                )
+                (
+                    self.pre_x,
+                    self.pre_y,
+                    self.bound_pre_x,
+                    self.bound_pre_y,
+                ) = self._generate_correlated_noise(steps=self.step_batchsize)
                 self.cur_step = 0
 
             dx = self.bound_pre_x[self.cur_step]
             dy = self.bound_pre_y[self.cur_step]
             self.cur_step += 1
             return np.array([dx, dy]).reshape(2)
-        
+
         elif self.bound_steps == "gamma":
             return self.boundstepper.generate_bound_step()
-        
+
         elif self.bound_steps == "gauss":
-            return self.boundstepper.generate_Bound_step()
+            return self.boundstepper.generate_bound_step()
 
         elif self.bound_steps == "scaled":
             return self.generate_bound_step(*args, **kwargs) / 10
@@ -507,10 +517,10 @@ class FLESteps(Stepper):
         # Scale results for final use.
         # Hurst exponent
         H = self.alpha / 2
-        bound_H = self.bound_alpha[0] / 2
+        bound_H = self.bound_alpha / 2
         # Length scale for process
         norm_msd = sqrt(2 * self.gamma) * self.dt ** H
-        bound_norm_msd = sqrt(2 * self.bound_gamma[0]) * self.dt ** bound_H
+        bound_norm_msd = sqrt(2 * self.bound_gamma) * self.dt ** bound_H
         # If gamma is ordinarily in m^2/s,
         # to convert to m^2/ s^alpha,
         # multiply by  1 s / s^alpha,
@@ -523,8 +533,6 @@ class FLESteps(Stepper):
         bound_y_steps = bound_norm_msd * np.real(second_fft_y[0:steps])
 
         return x_steps, y_steps, bound_x_steps, bound_y_steps
-    
-
 
 
 def compute_drag(prev_step: None, spring_constant: float = -0.5):
