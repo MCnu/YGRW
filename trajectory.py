@@ -5,8 +5,10 @@ Describe trajectory class (contains a sequence of points that a locus travels al
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.colors as colors
 from typing import Union, List
 import os as os
+from pylab import cm
 
 deg = np.pi / 180
 
@@ -279,20 +281,19 @@ def visualize_trajectory(
     bound_time = len(np.where(bound_states == True))
 
     # TODO implement bound zone time
-
-    alpha_vals = np.linspace(0.2, 0.8, N)
+    
+    grad_cmap = cm.get_cmap('viridis', N)
 
     for i, bound in zip(range(N - 1), bound_states[:-1]):
         if not bound:
             plt.plot(
                 positions[i : i + 2, 0],
                 positions[i : i + 2, 1],
-                color="orange",
-                alpha=alpha_vals[i],
+                color= colors.rgb2hex(grad_cmap(i)[:3]),
             )
         else:
             plt.plot(
-                positions[i : i + 2, 0], positions[i : i + 2, 1], color="navy", alpha=1
+                positions[i : i + 2, 0], positions[i : i + 2, 1], color="black", alpha=0.5
             )
 
     # if traj.bound_zone_thickness:
@@ -316,7 +317,7 @@ def visualize_trajectory(
     if show_final_locus:
         pos = traj.position
         # rad = traj.locus_radius
-        plt.scatter((pos[0]), (pos[1]), color="red", s=50, marker="o", zorder=1)
+        plt.scatter((pos[0]), (pos[1]), color="red", s=50, marker="o", zorder=N+1)
         # x = np.linspace(pos[0]-rad, pos[0]+rad, 100)
         # plt.plot(x, np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
         # plt.plot(x, -np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
