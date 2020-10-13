@@ -20,6 +20,7 @@ class Trajectory(object):
         locus_radius: float = 0.08,
         nuclear_radius: float = 1.0,
         bound_zone_thickness: float = 0.1,
+        dt: float = None,
         bound_to_bound: float = None,
         unbound_to_bound: float = None,
     ):
@@ -32,7 +33,7 @@ class Trajectory(object):
         self.locus_radius = locus_radius
         self.nuclear_radius = nuclear_radius
         self.bound_zone_thickness = bound_zone_thickness
-
+        self.dt = dt
         self.bound_to_bound = bound_to_bound
         self.unbound_to_bound = unbound_to_bound
 
@@ -249,6 +250,7 @@ class Trajectory(object):
         the_str += f"bound_zone_thickness:{self.bound_zone_thickness},"
         the_str += f"bound_to_bound:{self.bound_to_bound},"
         the_str += f"unbound_to_bound:{self.unbound_to_bound},"
+        the_str += f"dt:{self.dt},"
         the_str += f"\n"
 
         return the_str
@@ -284,12 +286,13 @@ def visualize_trajectory(
     
     grad_cmap = cm.get_cmap('viridis', N)
 
-    for i, bound in zip(range(N - 1), bound_states[:-1]):
+    for i, bound in zip(range(N+1), bound_states[:-1]):
         if not bound:
             plt.plot(
                 positions[i : i + 2, 0],
                 positions[i : i + 2, 1],
                 color= colors.rgb2hex(grad_cmap(i)[:3]),
+                alpha = 0.5,
             )
         else:
             plt.plot(
@@ -316,8 +319,10 @@ def visualize_trajectory(
 
     if show_final_locus:
         pos = traj.position
+        ipos = traj.positions[0]
         # rad = traj.locus_radius
         plt.scatter((pos[0]), (pos[1]), color="red", s=50, marker="o", zorder=N+1)
+        plt.scatter((ipos[0]), (ipos[1]), color="", s=50, marker="o", zorder=N+1)
         # x = np.linspace(pos[0]-rad, pos[0]+rad, 100)
         # plt.plot(x, np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
         # plt.plot(x, -np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
