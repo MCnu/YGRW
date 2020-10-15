@@ -23,6 +23,7 @@ class Trajectory(object):
         dt: float = 0.21,
         bound_to_bound: float = None,
         unbound_to_bound: float = None,
+        enforce_boundary: bool = True,
     ):
 
         if initial_position is None:
@@ -36,6 +37,7 @@ class Trajectory(object):
         self.dt = dt
         self.bound_to_bound = bound_to_bound
         self.unbound_to_bound = unbound_to_bound
+        self.enforce_boundary = enforce_boundary
 
     def __len__(self):
         return len(self.positions)
@@ -91,7 +93,9 @@ class Trajectory(object):
     ) -> Union[np.ndarray, bool]:
         ##TODO merge this with valid step check below, it is redundant
         
-        return step
+        if not self.enforce_boundary:
+            return step
+        
         next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
 
         nuclear_check = self.nuclear_radius > next_locus_extent
@@ -153,7 +157,10 @@ class Trajectory(object):
         -------
 
         """
-
+        
+        if not self.enforce_boundary:
+            return True
+        
         next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
 
         # Check that locus doesn't leave bounds of the nucleus

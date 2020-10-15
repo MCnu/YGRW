@@ -23,6 +23,7 @@ def generate_trajectory(
     fail_cutoff: int = 200,
     write_after: bool = False,
     write_format: str = "csv",
+    enforce_boundary: bool = True,
 ):
     """
     All length-scale units are in micron.
@@ -48,6 +49,7 @@ def generate_trajectory(
         bound_zone_thickness=bound_zone_thickness,
         bound_to_bound=bound_to_bound,
         unbound_to_bound=unbound_to_bound,
+        enforce_boundary=enforce_boundary,
     )
 
     if isinstance(stepper, FLESteps):
