@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 def generate_trajectory(
     timesteps: int,
+    dt: float = 0.21,
     stepper: Stepper = UniformSteps(),
     initial_position: np.ndarray = np.array((0, 0)),
     locus_radius: float = 0.01,
@@ -30,6 +31,7 @@ def generate_trajectory(
     ----------
     initial_position: Initial position of the locus
     timesteps: Duration of simulation
+    dt: time between each step
     locus_radius: Size of particle (units of micron)
     nuc_radius: Size of nucleus (units of micron)
 
@@ -40,6 +42,7 @@ def generate_trajectory(
 
     traj = Trajectory(
         initial_position=initial_position,
+        dt = dt,
         nuclear_radius=nuclear_radius,
         locus_radius=locus_radius,
         bound_zone_thickness=bound_zone_thickness,

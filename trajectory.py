@@ -20,6 +20,7 @@ class Trajectory(object):
         locus_radius: float = 0.08,
         nuclear_radius: float = 1.0,
         bound_zone_thickness: float = 0.1,
+        dt: float = 0.21,
         bound_to_bound: float = None,
         unbound_to_bound: float = None,
     ):
@@ -32,7 +33,7 @@ class Trajectory(object):
         self.locus_radius = locus_radius
         self.nuclear_radius = nuclear_radius
         self.bound_zone_thickness = bound_zone_thickness
-
+        self.dt = dt
         self.bound_to_bound = bound_to_bound
         self.unbound_to_bound = unbound_to_bound
 
@@ -88,7 +89,9 @@ class Trajectory(object):
     def check_nucleus(
         self, step, collision_style: str = "reflect"
     ) -> Union[np.ndarray, bool]:
-
+        ##TODO merge this with valid step check below, it is redundant
+        
+        return step
         next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
 
         nuclear_check = self.nuclear_radius > next_locus_extent
@@ -155,6 +158,7 @@ class Trajectory(object):
 
         # Check that locus doesn't leave bounds of the nucleus
         nuclear_check = self.nuclear_radius > next_locus_extent
+        
         if not nuclear_check:
             return nuclear_check
         # If locus unbound, can always take next step, possibly leaving the bound zone
@@ -249,6 +253,7 @@ class Trajectory(object):
         the_str += f"bound_zone_thickness:{self.bound_zone_thickness},"
         the_str += f"bound_to_bound:{self.bound_to_bound},"
         the_str += f"unbound_to_bound:{self.unbound_to_bound},"
+        the_str += f"dt:{self.dt},"
         the_str += f"\n"
 
         return the_str
