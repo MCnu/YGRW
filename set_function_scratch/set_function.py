@@ -14,8 +14,8 @@ import math
 deg = np.pi / 180
 
 np.random.seed(57343)
-nsteps = 120
-time_interval = 10
+nsteps = 600
+time_interval = 1
 
 
 # translate extracted gamma from 2D to dimension-less (divide by four)
@@ -39,9 +39,14 @@ bzt = 1.0 - math.sqrt(2 / 3)
 u2b = 0
 # assign inverse of unbinding rate
 b2b = 0
+#assign number of trajectories to create
+n_trajecs = 100
+#create seed array to ensure the same initial positions are always used
+seed_array = np.random.uniform(10000,99999,size = n_trajecs)
 
 
-for trajecs in range(0, 100):
+for trajecs in range(0, n_trajecs):
+    np.random.seed(int(seed_array[trajecs]))
     # ranrad = 1
     ranrad = np.random.uniform(0, 1, size=1)
     radangle = np.random.uniform(low=-180, high=180, size=1)
@@ -52,7 +57,10 @@ for trajecs in range(0, 100):
         ranpos[0] = -1 * ranpos[0]
     if np.random.uniform(0, 1, size=1) > 0.5:
         ranpos[1] = -1 * ranpos[1]
-    #ranpos = np.array([0.99,0.])
+        
+    ranpos = np.random.uniform(-1,1, size = 2)
+    while math.sqrt(ranpos[0]**2 + ranpos[1]**2) >= 1 or math.sqrt(ranpos[0]**2 + ranpos[1]**2) <= 0.3:
+        ranpos = np.random.uniform(-1,1, size = 2)
     gtt = generate_trajectory(
         timesteps=nsteps,
         dt = time_interval,
@@ -69,7 +77,7 @@ for trajecs in range(0, 100):
         unbound_to_bound=u2b,
         bound_zone_thickness=bzt,
         watch_progress=True,
-        enforce_boundary = False,
+        enforce_boundary = True,
     )
-    Trajectory.visualize(gtt)
-    #Trajectory.write_trajectory(gtt, output_file=f"URA3_20_80_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BINDING_COLLISIONrestep")
+    #Trajectory.visualize(gtt)
+    Trajectory.write_trajectory(gtt, output_file=f"URA3_300shift_Repos_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BOUNDARY_GAMALPHtest")
