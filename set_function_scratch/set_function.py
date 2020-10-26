@@ -28,6 +28,8 @@ time_interval = 1
 # URA3 gamma/alpha inputs
 adjalpha = 0.448
 adjgam = (0.015/4)
+
+# Bound inputs
 adjbalpha = 0.373
 adjbgam = 0.003 / 4
 
@@ -79,5 +81,5 @@ for trajecs in range(0, n_trajecs):
         watch_progress=True,
         enforce_boundary = True,
     )
-    #Trajectory.visualize(gtt)
-    Trajectory.write_trajectory(gtt, output_file=f"URA3_300shift_Repos_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BOUNDARY_GAMALPHtest")
+    Trajectory.visualize(gtt)
+    #Trajectory.write_trajectory(gtt, output_file=f"URA3_300shift_Repos_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BOUNDARY_GAMALPHtest")

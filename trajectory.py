@@ -327,9 +327,11 @@ def visualize_trajectory(
         plt.fill(np.ravel(xs), np.ravel(ys), "gray", alpha=0.2)
 
     if show_final_locus:
-        pos = traj.position
+        pos_stop = traj.position
+        pos_start = traj.positions[0]
         # rad = traj.locus_radius
-        plt.scatter((pos[0]), (pos[1]), color="red", s=50, marker="o", zorder=N+1)
+        plt.scatter((pos_stop[0]), (pos_stop[1]), color="red", s=50, marker="s", zorder=N+1)
+        plt.scatter((pos_start[0]), (pos_start[1]), color="lime", s=100, marker=">", zorder=N+1)
         # x = np.linspace(pos[0]-rad, pos[0]+rad, 100)
         # plt.plot(x, np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
         # plt.plot(x, -np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
