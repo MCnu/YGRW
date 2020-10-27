@@ -88,60 +88,60 @@ class Trajectory(object):
         """
         self.positions.append(self.position + step)
 
-    def check_nucleus(
-        self, step, collision_style: str = "reflect"
-    ) -> Union[np.ndarray, bool]:
-        ##TODO merge this with valid step check below, it is redundant
+    # def check_nucleus(
+    #     self, step, collision_style: str = "reflect"
+    # ) -> Union[np.ndarray, bool]:
+    #     ##TODO merge this with valid step check below, it is redundant
         
-        if not self.enforce_boundary:
-            return step
+    #     if not self.enforce_boundary:
+    #         return step
         
-        next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
+    #     next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
 
-        nuclear_check = self.nuclear_radius > next_locus_extent
+    #     nuclear_check = self.nuclear_radius > next_locus_extent
 
-        bound_check = (
-            self.nuclear_radius - self.bound_zone_thickness
-        ) < next_locus_extent
+    #     bound_check = (
+    #         self.nuclear_radius - self.bound_zone_thickness
+    #     ) < next_locus_extent
 
-        if not nuclear_check and collision_style == "reflect":
+    #     if not nuclear_check and collision_style == "reflect":
 
-            step[0] = (
-                (2 * self.nuclear_radius - next_locus_extent)
-                * step[0]
-                / next_locus_extent
-            )
-            step[1] = (
-                (2 * self.nuclear_radius - next_locus_extent)
-                * step[1]
-                / next_locus_extent
-            )
+    #         step[0] = (
+    #             (2 * self.nuclear_radius - next_locus_extent)
+    #             * step[0]
+    #             / next_locus_extent
+    #         )
+    #         step[1] = (
+    #             (2 * self.nuclear_radius - next_locus_extent)
+    #             * step[1]
+    #             / next_locus_extent
+    #         )
 
-            return step
+    #         return step
 
-        if not nuclear_check and collision_style == "reject":
-            return nuclear_check
+    #     if not nuclear_check and collision_style == "reject":
+    #         return nuclear_check
 
-        if self.is_bound and not bound_check:
-            step[0] = (
-                (
-                    2 * (self.nuclear_radius - self.bound_zone_thickness)
-                    - next_locus_extent
-                )
-                * step[0]
-                / next_locus_extent
-            )
-            step[1] = (
-                (
-                    2 * (self.nuclear_radius - self.bound_zone_thickness)
-                    - next_locus_extent
-                )
-                * step[1]
-                / next_locus_extent
-            )
+    #     if self.is_bound and not bound_check:
+    #         step[0] = (
+    #             (
+    #                 2 * (self.nuclear_radius - self.bound_zone_thickness)
+    #                 - next_locus_extent
+    #             )
+    #             * step[0]
+    #             / next_locus_extent
+    #         )
+    #         step[1] = (
+    #             (
+    #                 2 * (self.nuclear_radius - self.bound_zone_thickness)
+    #                 - next_locus_extent
+    #             )
+    #             * step[1]
+    #             / next_locus_extent
+    #         )
 
-        if nuclear_check:
-            return step
+    #     if nuclear_check:
+    #         return step
 
     def check_step_is_valid(self, step: np.ndarray, is_bound: bool = False) -> bool:
         """
@@ -161,9 +161,10 @@ class Trajectory(object):
         if not self.enforce_boundary:
             return True
         
+        # Determine radius is ideal step is taken
         next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
 
-        # Check that locus doesn't leave bounds of the nucleus
+        # Check that ideal position does not leave bounds of the nucleus
         nuclear_check = self.nuclear_radius > next_locus_extent
         
         if not nuclear_check:
@@ -175,6 +176,71 @@ class Trajectory(object):
         diff_to_wall = self.nuclear_radius - next_locus_extent
         bound_check = diff_to_wall < self.bound_zone_thickness
         return bound_check
+    
+    def step_mod(self, step: np.ndarray, is_bound: bool = False, 
+                 method: str = "re_FLE") -> np.ndarray:
+        
+        """
+        When a step is determined to be invalid, here we alter the step to be 
+        as close as possible to the ideal position
+        
+        Parameters
+        ----------
+        step
+        is_bound
+
+        Returns step altered accordingly
+        -------
+        """
+        
+        next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
+        
+        nuclear_check = self.nuclear_radius > next_locus_extent
+        
+        if not nuclear_check:
+            
+            ideal_position = self.position + step
+            
+            #??? This operation may be leading to overflow errors
+            ideal_slope = ideal_position[1] / ideal_position[0]
+            
+            adj_pos = np.zeros(2)
+            
+            adj_step = np.zeros(2)
+            
+            adj_pos[0] = np.sqrt(self.nuclear_radius) / np.sqrt((ideal_slope ** 2)+1)
+            
+            adj_pos[1] = ideal_slope * adj_pos[0]
+            
+            
+            if ideal_position[0] < 0 \
+                and adj_pos[0] > 0: 
+                    adj_pos[0] = adj_pos[0] * (-1)
+            elif ideal_position[0] > 0 \
+                and adj_pos[0] < 0:
+                    adj_pos[0] = adj_pos[0] * (-1)
+                
+            if ideal_position[1] < 0 \
+                and adj_pos[1] > 0:
+                    adj_pos[1] = adj_pos[1] * (-1)
+            elif ideal_position[1] > 0 \
+                and adj_pos[1] < 0:
+                    adj_pos[1] = adj_pos[1] * (-1)
+            
+            adj_step = self.position - adj_pos
+            
+            return adj_step
+        
+        diff_to_wall = self.nuclear_radius - next_locus_extent
+        
+        bound_check = diff_to_wall < self.bound_zone_thickness
+        
+        if not bound_check:
+            
+            #TODO invert the above method for bound zone thickness
+            
+            return step
+        
 
     def msd(self, lower_range: int = 0, upper_range: int = -1) -> float:
         """
@@ -296,16 +362,18 @@ def visualize_trajectory(
     
     grad_cmap = cm.get_cmap('viridis', N)
 
-    for i, bound in zip(range(N - 1), bound_states[:-1]):
+    for i, bound in zip(range(N), bound_states[:-1]):
         if not bound:
             plt.plot(
-                positions[i : i + 2, 0],
-                positions[i : i + 2, 1],
+                positions[(i) : (i + 2), 0],
+                positions[(i) : (i + 2), 1],
                 color= colors.rgb2hex(grad_cmap(i)[:3]),
             )
         else:
             plt.plot(
-                positions[i : i + 2, 0], positions[i : i + 2, 1], color="black", alpha=0.5
+                positions[i : i + 2, 0], 
+                positions[i : i + 2, 1], 
+                color="black", alpha=0.5,
             )
 
     # if traj.bound_zone_thickness:

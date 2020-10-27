@@ -65,7 +65,7 @@ class GaussianSteps(Stepper):
         super().__init__()
 
     def generate_step(self, prev_step=None, prev_angle=None):
-        print(np.random.normal(loc=self.mu, scale=self.sig, size=2))
+        
         return np.random.normal(loc=self.mu, scale=self.sig, size=2)
 
     def generate_bound_step(self, prev_step=None, prev_angle=None):
@@ -408,9 +408,9 @@ class FLESteps(Stepper):
 
         super().__init__()
 
-    def generate_step(self, *args, **kwargs):
-
-        if self.cur_step == self.step_batchsize:
+    def generate_step(self, regenerate: bool = False, *args, **kwargs):
+        
+        if self.cur_step == self.step_batchsize or regenerate:
             (
                 self.pre_x,
                 self.pre_y,
@@ -424,9 +424,9 @@ class FLESteps(Stepper):
         self.cur_step += 1
         return np.array([dx, dy]).reshape(2)
 
-    def generate_bound_step(self, *args, **kwargs):
+    def generate_bound_step(self, regenerate:bool = False, *args, **kwargs):
         if self.bound_steps == "FLE":
-            if self.cur_step == self.step_batchsize:
+            if self.cur_step == self.step_batchsize or regenerate:
                 (
                     self.pre_x,
                     self.pre_y,

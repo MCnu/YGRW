@@ -14,11 +14,14 @@ import math
 deg = np.pi / 180
 
 np.random.seed(57343)
-nsteps = 600
+nsteps = 6000
 time_interval = 1
+nuc_rad = 1
+
 
 
 # translate extracted gamma from 2D to dimension-less (divide by four)
+# Divide by 2 if extracted from 1D, divide by six if extracted from 3D
 
 
 # SPB gamma/alpha inputs
@@ -26,8 +29,12 @@ time_interval = 1
 #adjalpha = 0.393
 
 # URA3 gamma/alpha inputs
-adjalpha = 0.448
-adjgam = (0.015/4)
+#adjalpha = 0.448
+#adjgam = (0.015/4)
+
+#Override gamma/alpha inputs
+adjalpha = 0.9
+adjgam = 0.015 / 4
 
 # Bound inputs
 adjbalpha = 0.373
@@ -46,26 +53,32 @@ n_trajecs = 100
 #create seed array to ensure the same initial positions are always used
 seed_array = np.random.uniform(10000,99999,size = n_trajecs)
 
+#how many failures to stay within that boundary can a single trajectory tolerate?
+#Set to nsteps to have virtually no limit
+how_big_to_fail = nsteps
+
 
 for trajecs in range(0, n_trajecs):
     np.random.seed(int(seed_array[trajecs]))
-    # ranrad = 1
-    ranrad = np.random.uniform(0, 1, size=1)
-    radangle = np.random.uniform(low=-180, high=180, size=1)
-    ranpos = np.zeros(2)
-    ranpos[0] = float(np.cos(radangle * deg) * ranrad)
-    ranpos[1] = float(np.sin(radangle * deg) * ranrad)
-    if np.random.uniform(0, 1, size=1) > 0.5:
-        ranpos[0] = -1 * ranpos[0]
-    if np.random.uniform(0, 1, size=1) > 0.5:
-        ranpos[1] = -1 * ranpos[1]
+    #ranrad = 1
+    #ranrad = np.random.uniform(0, 1, size=1)
+    #radangle = np.random.uniform(low=-180, high=180, size=1)
+    #ranpos = np.zeros(2)
+    #ranpos[0] = float(np.cos(radangle * deg) * ranrad)
+    #ranpos[1] = float(np.sin(radangle * deg) * ranrad)
+    #if np.random.uniform(0, 1, size=1) > 0.5:
+    #    ranpos[0] = -1 * ranpos[0]
+    #if np.random.uniform(0, 1, size=1) > 0.5:
+    #    ranpos[1] = -1 * ranpos[1]
         
     ranpos = np.random.uniform(-1,1, size = 2)
-    while math.sqrt(ranpos[0]**2 + ranpos[1]**2) >= 1 or math.sqrt(ranpos[0]**2 + ranpos[1]**2) <= 0.3:
+    while math.sqrt(ranpos[0]**2 + ranpos[1]**2) >= 1 : #\
+        #or math.sqrt(ranpos[0]**2 + ranpos[1]**2) <= 0.3:
         ranpos = np.random.uniform(-1,1, size = 2)
     gtt = generate_trajectory(
         timesteps=nsteps,
         dt = time_interval,
+        nuclear_radius = nuc_rad,
         stepper=FLESteps(
             step_batchsize=nsteps,
             dt=time_interval,
@@ -79,7 +92,8 @@ for trajecs in range(0, n_trajecs):
         unbound_to_bound=u2b,
         bound_zone_thickness=bzt,
         watch_progress=True,
+        fail_cutoff=how_big_to_fail,
         enforce_boundary = True,
     )
-    Trajectory.visualize(gtt)
-    #Trajectory.write_trajectory(gtt, output_file=f"URA3_300shift_Repos_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BOUNDARY_GAMALPHtest")
+    #Trajectory.visualize(gtt)
+    Trajectory.write_trajectory(gtt, output_file=f"Experimental_Boundary_Alpha900_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BOUNDARY_GAMALPHtest")
