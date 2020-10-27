@@ -86,6 +86,7 @@ class Trajectory(object):
         -------
 
         """
+        #??? Another overflow error.....
         self.positions.append(self.position + step)
 
     # def check_nucleus(
@@ -209,7 +210,7 @@ class Trajectory(object):
             adj_step = np.zeros(2)
             
             adj_pos[0] = np.sqrt(self.nuclear_radius) / np.sqrt((ideal_slope ** 2)+1)
-            
+            #??? overflow error again.... 
             adj_pos[1] = ideal_slope * adj_pos[0]
             
             
