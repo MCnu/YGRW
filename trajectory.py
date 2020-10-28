@@ -17,7 +17,7 @@ class Trajectory(object):
     def __init__(
         self,
         initial_position: np.ndarray = None,
-        locus_radius: float = 0.08,
+        locus_radius: float = 0.01,
         nuclear_radius: float = 1.0,
         bound_zone_thickness: float = 0.1,
         dt: float = 0.21,
@@ -202,14 +202,16 @@ class Trajectory(object):
             
             ideal_position = self.position + step
             
-            #??? This operation may be leading to overflow errors
+            
+            ideal_slope = np.zeros(0)
+            
             ideal_slope = ideal_position[1] / ideal_position[0]
             
             adj_pos = np.zeros(2)
             
             adj_step = np.zeros(2)
             
-            adj_pos[0] = np.sqrt(self.nuclear_radius) / np.sqrt((ideal_slope ** 2)+1)
+            adj_pos[0] = np.sqrt(self.nuclear_radius-self.locus_radius) / np.sqrt((ideal_slope ** 2)+1)
             #??? overflow error again.... 
             adj_pos[1] = ideal_slope * adj_pos[0]
             

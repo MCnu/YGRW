@@ -15,8 +15,9 @@ deg = np.pi / 180
 
 np.random.seed(57343)
 nsteps = 6000
-time_interval = 1
+time_interval = .21
 nuc_rad = 1
+loc_rad = 0.001
 
 
 
@@ -33,7 +34,7 @@ nuc_rad = 1
 #adjgam = (0.015/4)
 
 #Override gamma/alpha inputs
-adjalpha = 0.9
+adjalpha = 0.5
 adjgam = 0.015 / 4
 
 # Bound inputs
@@ -55,11 +56,13 @@ seed_array = np.random.uniform(10000,99999,size = n_trajecs)
 
 #how many failures to stay within that boundary can a single trajectory tolerate?
 #Set to nsteps to have virtually no limit
-how_big_to_fail = nsteps
+how_big_to_fail = nsteps * 0.03
 
 
 for trajecs in range(0, n_trajecs):
-    np.random.seed(int(seed_array[trajecs]))
+    cur_seed = int(seed_array[trajecs])
+    print(cur_seed)
+    np.random.seed(cur_seed)
     #ranrad = 1
     #ranrad = np.random.uniform(0, 1, size=1)
     #radangle = np.random.uniform(low=-180, high=180, size=1)
@@ -79,6 +82,7 @@ for trajecs in range(0, n_trajecs):
         timesteps=nsteps,
         dt = time_interval,
         nuclear_radius = nuc_rad,
+        locus_radius=loc_rad,
         stepper=FLESteps(
             step_batchsize=nsteps,
             dt=time_interval,
@@ -96,4 +100,4 @@ for trajecs in range(0, n_trajecs):
         enforce_boundary = True,
     )
     #Trajectory.visualize(gtt)
-    Trajectory.write_trajectory(gtt, output_file=f"Experimental_Boundary_Alpha900_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BOUNDARY_GAMALPHtest")
+    Trajectory.write_trajectory(gtt, output_file=f"Experimental_Boundary_Alpha500_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BOUNDARY_GAMALPHtest")

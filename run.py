@@ -56,11 +56,10 @@ def generate_trajectory(
         assert stepper.step_batchsize == timesteps, (
             "Batch for random generation" "must agree with run length."
         )
-
-    print("FLE" in str(stepper))
     
     taken_steps = 0
     failed_steps = 0
+    regenerations = 0
     if watch_progress:
         pbar = tqdm(total=timesteps)
     while taken_steps < timesteps:
@@ -72,12 +71,15 @@ def generate_trajectory(
         while failed_steps < fail_cutoff:
             if traj.is_bound:
                 if failed_steps > 0 and ("FLE" in str(stepper)):
+                    regenerations += 1
                     cur_step = stepper.generate_bound_step(regenerate = True)
                 else:
                     cur_step = stepper.generate_bound_step(prev_step = traj.prev_step, prev_angle = traj.prev_angle)
             else:
                 if failed_steps > 0 and ("FLE" in str(stepper)):
+                    regenerations += 1
                     cur_step = stepper.generate_step(regenerate = True)
+                    
                 else:
                     cur_step = stepper.generate_step(prev_step=traj.prev_step, prev_angle=traj.prev_angle)
 
@@ -110,7 +112,7 @@ def generate_trajectory(
             break
     if watch_progress:
         pbar.close()
-
+        print(regenerations)
     if write_after:
 
         optional_header = ""
