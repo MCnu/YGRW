@@ -200,37 +200,19 @@ class Trajectory(object):
         
         if not nuclear_check:
             
+            db_pos = self.position
+            
             ideal_position = self.position + step
             
-            
-            ideal_slope = np.zeros(0)
-            
-            ideal_slope = ideal_position[1] / ideal_position[0]
-            
-            adj_pos = np.zeros(2)
-            
-            adj_step = np.zeros(2)
-            
-            adj_pos[0] = np.sqrt(self.nuclear_radius-self.locus_radius) / np.sqrt((ideal_slope ** 2)+1)
-            #??? overflow error again.... 
-            adj_pos[1] = ideal_slope * adj_pos[0]
+            collide_roots = np.roots([step[0]**2 + step[1]**2, 2*(step[0]+step[1]), self.position[0]**2 + self.position[1]**2 - (self.nuclear_radius - 0.01)**2])
             
             
-            if ideal_position[0] < 0 \
-                and adj_pos[0] > 0: 
-                    adj_pos[0] = adj_pos[0] * (-1)
-            elif ideal_position[0] > 0 \
-                and adj_pos[0] < 0:
-                    adj_pos[0] = adj_pos[0] * (-1)
-                
-            if ideal_position[1] < 0 \
-                and adj_pos[1] > 0:
-                    adj_pos[1] = adj_pos[1] * (-1)
-            elif ideal_position[1] > 0 \
-                and adj_pos[1] < 0:
-                    adj_pos[1] = adj_pos[1] * (-1)
-            
-            adj_step = self.position - adj_pos
+            if np.abs(collide_roots[0]) < 1:
+                adj_step = step * (np.abs(collide_roots[0])-0.2)
+            elif np.abs(collide_roots[1]) < 1:
+                adj_step = step * (np.abs(collide_roots[1])-0.2)
+            else:
+                adj_step = step * 0.0001
             
             return adj_step
         

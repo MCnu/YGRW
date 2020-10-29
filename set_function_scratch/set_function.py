@@ -15,7 +15,7 @@ deg = np.pi / 180
 
 np.random.seed(57343)
 nsteps = 6000
-time_interval = .21
+time_interval = 1
 nuc_rad = 1
 loc_rad = 0.001
 
@@ -99,5 +99,5 @@ for trajecs in range(0, n_trajecs):
         fail_cutoff=how_big_to_fail,
         enforce_boundary = True,
     )
-    #Trajectory.visualize(gtt)
-    Trajectory.write_trajectory(gtt, output_file=f"Experimental_Boundary_Alpha500_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BOUNDARY_GAMALPHtest")
+    Trajectory.visualize(gtt)
+    #Trajectory.write_trajectory(gtt, output_file=f"Experimental_Boundary_Alpha500_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BOUNDARY_GAMALPHtest")

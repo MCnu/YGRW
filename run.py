@@ -79,7 +79,6 @@ def generate_trajectory(
                 if failed_steps > 0 and ("FLE" in str(stepper)):
                     regenerations += 1
                     cur_step = stepper.generate_step(regenerate = True)
-                    
                 else:
                     cur_step = stepper.generate_step(prev_step=traj.prev_step, prev_angle=traj.prev_angle)
 
@@ -98,6 +97,9 @@ def generate_trajectory(
                 break
             else:
                 cur_step = traj.step_mod(step=cur_step, is_bound=traj.is_bound)
+                if np.linalg.norm(traj.position + cur_step) + traj.locus_radius > traj.nuclear_radius:
+                    db_pos = traj.position
+                    cur_step = np.zeros(2)
                 traj.take_step(cur_step)
                 taken_steps += 1
                 if watch_progress:
