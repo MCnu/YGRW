@@ -43,7 +43,7 @@ def generate_trajectory(
 
     traj = Trajectory(
         initial_position=initial_position,
-        dt = dt,
+        dt=dt,
         nuclear_radius=nuclear_radius,
         locus_radius=locus_radius,
         bound_zone_thickness=bound_zone_thickness,
@@ -56,14 +56,13 @@ def generate_trajectory(
         assert stepper.step_batchsize == timesteps, (
             "Batch for random generation" "must agree with run length."
         )
-    
+
     taken_steps = 0
     failed_steps = 0
     regenerations = 0
     if watch_progress:
         pbar = tqdm(total=timesteps)
     while taken_steps < timesteps:
-        
 
         traj.bound_states.append(
             generate_current_bound(traj, bound_to_bound, unbound_to_bound)
@@ -72,15 +71,19 @@ def generate_trajectory(
             if traj.is_bound:
                 if failed_steps > 0 and ("FLE" in str(stepper)):
                     regenerations += 1
-                    cur_step = stepper.generate_bound_step(regenerate = True)
+                    cur_step = stepper.generate_bound_step(regenerate=True)
                 else:
-                    cur_step = stepper.generate_bound_step(prev_step = traj.prev_step, prev_angle = traj.prev_angle)
+                    cur_step = stepper.generate_bound_step(
+                        prev_step=traj.prev_step, prev_angle=traj.prev_angle
+                    )
             else:
                 if failed_steps > 0 and ("FLE" in str(stepper)):
                     regenerations += 1
-                    cur_step = stepper.generate_step(regenerate = True)
+                    cur_step = stepper.generate_step(regenerate=True)
                 else:
-                    cur_step = stepper.generate_step(prev_step=traj.prev_step, prev_angle=traj.prev_angle)
+                    cur_step = stepper.generate_step(
+                        prev_step=traj.prev_step, prev_angle=traj.prev_angle
+                    )
 
             # TODO fix redundancy of check_nucleus and check_step_is_valid
             # TODO re-establish FLE after each collision
@@ -97,24 +100,28 @@ def generate_trajectory(
                 break
             else:
                 cur_step = traj.step_mod(step=cur_step, is_bound=traj.is_bound)
-                if np.linalg.norm(traj.position + cur_step) + traj.locus_radius > traj.nuclear_radius:
-                    db_pos = traj.position
+                if (
+                    np.linalg.norm(traj.position + cur_step) + traj.locus_radius
+                    > traj.nuclear_radius
+                ):
+                    cur_step = np.zeros(2)
+                elif traj.is_bound and (
+                    np.linalg.norm(traj.position + cur_step) + traj.locus_radius
+                ) < (traj.nuclear_radius - traj.bound_zone_thickness):
                     cur_step = np.zeros(2)
                 traj.take_step(cur_step)
                 taken_steps += 1
                 if watch_progress:
                     pbar.update(1)
-                #TODO perform restep of FLE stepper
-                
                 failed_steps += 1
                 break
-                
+
         if failed_steps == fail_cutoff:
             print(f"Warning: Run got stuck at step {taken_steps}")
             break
     if watch_progress:
         pbar.close()
-        print(regenerations)
+
     if write_after:
 
         optional_header = ""

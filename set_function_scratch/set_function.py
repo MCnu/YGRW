@@ -15,7 +15,7 @@ deg = np.pi / 180
 
 np.random.seed(57343)
 nsteps = 6000
-time_interval = 1
+time_interval = 0.21
 nuc_rad = 1
 loc_rad = 0.001
 
@@ -30,12 +30,12 @@ loc_rad = 0.001
 #adjalpha = 0.393
 
 # URA3 gamma/alpha inputs
-#adjalpha = 0.448
-#adjgam = (0.015/4)
+adjalpha = 0.448
+adjgam = (0.015/4)
 
 #Override gamma/alpha inputs
-adjalpha = 0.5
-adjgam = 0.015 / 4
+#adjalpha = 0.5
+#adjgam = 0.015 / 4
 
 # Bound inputs
 adjbalpha = 0.373
@@ -43,12 +43,12 @@ adjbgam = 0.003 / 4
 
 
 # assign bind zone thickness
-bzt = 1.0 - math.sqrt(2 / 3)
-# (1. - math.sqrt(2/3))
+bzt = 0.05
+# ^^^ set to (1.0 - math.sqrt(2/3)) for the outer third of the area
 # assign binding rate
-u2b = 0
+u2b = 0.9
 # assign inverse of unbinding rate
-b2b = 0
+b2b = 0.9
 #assign number of trajectories to create
 n_trajecs = 100
 #create seed array to ensure the same initial positions are always used
@@ -61,8 +61,9 @@ how_big_to_fail = nsteps * 0.03
 
 for trajecs in range(0, n_trajecs):
     cur_seed = int(seed_array[trajecs])
-    print(cur_seed)
+    #print(cur_seed)
     np.random.seed(cur_seed)
+    #np.random.seed(41828)
     #ranrad = 1
     #ranrad = np.random.uniform(0, 1, size=1)
     #radangle = np.random.uniform(low=-180, high=180, size=1)
@@ -75,7 +76,7 @@ for trajecs in range(0, n_trajecs):
     #    ranpos[1] = -1 * ranpos[1]
         
     ranpos = np.random.uniform(-1,1, size = 2)
-    while math.sqrt(ranpos[0]**2 + ranpos[1]**2) >= 1 : #\
+    while math.sqrt(ranpos[0]**2 + ranpos[1]**2) >= (1) : #\
         #or math.sqrt(ranpos[0]**2 + ranpos[1]**2) <= 0.3:
         ranpos = np.random.uniform(-1,1, size = 2)
     gtt = generate_trajectory(
@@ -99,5 +100,5 @@ for trajecs in range(0, n_trajecs):
         fail_cutoff=how_big_to_fail,
         enforce_boundary = True,
     )
-    Trajectory.visualize(gtt)
-    #Trajectory.write_trajectory(gtt, output_file=f"Experimental_Boundary_Alpha500_FLE_{trajecs}.csv",optional_header_add="URA3_FLE_BOUNDARY_GAMALPHtest")
+    #Trajectory.visualize(gtt)
+    Trajectory.write_trajectory(gtt, output_file=f"Test_GRS1_u90_b90_FLE_{trajecs}.csv",optional_header_add="GRS1_bound_test")

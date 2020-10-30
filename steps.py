@@ -65,7 +65,7 @@ class GaussianSteps(Stepper):
         super().__init__()
 
     def generate_step(self, prev_step=None, prev_angle=None):
-        
+
         return np.random.normal(loc=self.mu, scale=self.sig, size=2)
 
     def generate_bound_step(self, prev_step=None, prev_angle=None):
@@ -391,6 +391,7 @@ class FLESteps(Stepper):
         self.bound_alpha = bound_alpha
         self.dt = dt
         self.cur_step = 0
+        self.real_step = 0
         self.step_batchsize = step_batchsize
         self.bound_steps = bound_steps
         (
@@ -401,7 +402,7 @@ class FLESteps(Stepper):
         ) = self._generate_correlated_noise(
             steps=step_batchsize, fle_random_seed=fle_random_seed
         )
-
+        #
         self.boundstepper = None
         if self.bound_steps == "gamma":
             self.boundstepper = GammaSteps(3, 45, 2.7, 72)
@@ -409,45 +410,56 @@ class FLESteps(Stepper):
         super().__init__()
 
     def generate_step(self, regenerate: bool = False, *args, **kwargs):
-        
+
         if self.cur_step == self.step_batchsize or regenerate:
+            adj_batchsize = self.step_batchsize - self.real_step
+            if adj_batchsize < 0:
+                adj_batchsize = self.step_batchsize
+
             (
                 self.pre_x,
                 self.pre_y,
                 self.bound_pre_x,
                 self.bound_pre_y,
-            ) = self._generate_correlated_noise(steps=self.step_batchsize)
+            ) = self._generate_correlated_noise(steps=adj_batchsize)
             self.cur_step = 0
 
         dx = self.pre_x[self.cur_step]
         dy = self.pre_y[self.cur_step]
+        self.real_step += 1
         self.cur_step += 1
         return np.array([dx, dy]).reshape(2)
 
-    def generate_bound_step(self, regenerate:bool = False, *args, **kwargs):
+    def generate_bound_step(self, regenerate: bool = False, *args, **kwargs):
         if self.bound_steps == "FLE":
             if self.cur_step == self.step_batchsize or regenerate:
+                adj_batchsize = self.step_batchsize - self.real_step
+                if adj_batchsize < 0:
+                    adj_batchsize = self.step_batchsize
+
                 (
                     self.pre_x,
                     self.pre_y,
                     self.bound_pre_x,
                     self.bound_pre_y,
-                ) = self._generate_correlated_noise(steps=self.step_batchsize)
+                ) = self._generate_correlated_noise(steps=adj_batchsize)
                 self.cur_step = 0
 
-            dx = self.bound_pre_x[self.cur_step]
-            dy = self.bound_pre_y[self.cur_step]
-            self.cur_step += 1
-            return np.array([dx, dy]).reshape(2)
+        dx = self.bound_pre_x[self.cur_step]
+        dy = self.bound_pre_y[self.cur_step]
+        self.real_step += 1
+        self.cur_step += 1
+        return np.array([dx, dy]).reshape(2)
 
-        elif self.bound_steps == "gamma":
-            return self.boundstepper.generate_bound_step()
+    # TODO REMOVE below conditional statements and the need for method string
+    # elif self.bound_steps == "gamma":
+    #     return self.boundstepper.generate_bound_step()
 
-        elif self.bound_steps == "gauss":
-            return self.boundstepper.generate_bound_step()
+    # elif self.bound_steps == "gauss":
+    #     return self.boundstepper.generate_bound_step()
 
-        elif self.bound_steps == "scaled":
-            return self.generate_bound_step(*args, **kwargs) / 10
+    # elif self.bound_steps == "scaled":
+    #     return self.generate_bound_step(*args, **kwargs) / 10
 
     def _generate_correlated_noise(
         self,
@@ -535,6 +547,7 @@ class FLESteps(Stepper):
         return x_steps, y_steps, bound_x_steps, bound_y_steps
 
 
+# TODO REMOVE
 def compute_drag(prev_step: None, spring_constant: float = -0.5):
     if prev_step is None:
         prev_x_drag = 0
