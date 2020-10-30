@@ -11,7 +11,6 @@ from tqdm import tqdm
 
 def generate_trajectory(
     timesteps: int,
-    dt: float = 0.21,
     stepper: Stepper = UniformSteps(),
     initial_position: np.ndarray = np.array((0, 0)),
     locus_radius: float = 0.01,
@@ -23,7 +22,6 @@ def generate_trajectory(
     fail_cutoff: int = 200,
     write_after: bool = False,
     write_format: str = "csv",
-    enforce_boundary: bool = True,
 ):
     """
     All length-scale units are in micron.
@@ -32,7 +30,6 @@ def generate_trajectory(
     ----------
     initial_position: Initial position of the locus
     timesteps: Duration of simulation
-    dt: time between each step
     locus_radius: Size of particle (units of micron)
     nuc_radius: Size of nucleus (units of micron)
 
@@ -43,13 +40,11 @@ def generate_trajectory(
 
     traj = Trajectory(
         initial_position=initial_position,
-        dt=dt,
         nuclear_radius=nuclear_radius,
         locus_radius=locus_radius,
         bound_zone_thickness=bound_zone_thickness,
         bound_to_bound=bound_to_bound,
         unbound_to_bound=unbound_to_bound,
-        enforce_boundary=enforce_boundary,
     )
 
     if isinstance(stepper, FLESteps):
@@ -58,40 +53,25 @@ def generate_trajectory(
         )
 
     taken_steps = 0
-    failed_steps = 0
-    regenerations = 0
     if watch_progress:
         pbar = tqdm(total=timesteps)
     while taken_steps < timesteps:
+        failed_steps = 0
 
         traj.bound_states.append(
             generate_current_bound(traj, bound_to_bound, unbound_to_bound)
         )
         while failed_steps < fail_cutoff:
+
             if traj.is_bound:
-                if failed_steps > 0 and ("FLE" in str(stepper)):
-                    regenerations += 1
-                    cur_step = stepper.generate_bound_step(regenerate=True)
-                else:
-                    cur_step = stepper.generate_bound_step(
-                        prev_step=traj.prev_step, prev_angle=traj.prev_angle
-                    )
+                cur_step = stepper.generate_bound_step(traj.prev_step, traj.prev_angle)
             else:
-                if failed_steps > 0 and ("FLE" in str(stepper)):
-                    regenerations += 1
-                    cur_step = stepper.generate_step(regenerate=True)
-                else:
-                    cur_step = stepper.generate_step(
-                        prev_step=traj.prev_step, prev_angle=traj.prev_angle
-                    )
+                cur_step = stepper.generate_step(traj.prev_step, traj.prev_angle)
 
-            # TODO fix redundancy of check_nucleus and check_step_is_valid
-            # TODO re-establish FLE after each collision
+            # TODO implement check nucleus with reflect/ricochet
+            traj.check_nucleus(cur_step)
 
-            # vvv once traj,check_nucleus is gone, remove this vvv
-            # cur_step = np.array(traj.check_nucleus(cur_step))
-
-            if traj.check_step_is_valid(step=cur_step, is_bound=traj.is_bound):
+            if traj.check_step_is_valid(cur_step, traj.is_bound):
                 traj.take_step(cur_step)
                 taken_steps += 1
                 if watch_progress:
@@ -99,22 +79,7 @@ def generate_trajectory(
                 failed_steps = 0
                 break
             else:
-                cur_step = traj.step_mod(step=cur_step, is_bound=traj.is_bound)
-                if (
-                    np.linalg.norm(traj.position + cur_step) + traj.locus_radius
-                    > traj.nuclear_radius
-                ):
-                    cur_step = np.zeros(2)
-                elif traj.is_bound and (
-                    np.linalg.norm(traj.position + cur_step) + traj.locus_radius
-                ) < (traj.nuclear_radius - traj.bound_zone_thickness):
-                    cur_step = np.zeros(2)
-                traj.take_step(cur_step)
-                taken_steps += 1
-                if watch_progress:
-                    pbar.update(1)
                 failed_steps += 1
-                break
 
         if failed_steps == fail_cutoff:
             print(f"Warning: Run got stuck at step {taken_steps}")
