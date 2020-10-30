@@ -5,8 +5,10 @@ Describe trajectory class (contains a sequence of points that a locus travels al
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.colors as colors
 from typing import Union, List
 import os as os
+from pylab import cm
 
 deg = np.pi / 180
 
@@ -15,11 +17,13 @@ class Trajectory(object):
     def __init__(
         self,
         initial_position: np.ndarray = None,
-        locus_radius: float = 0.08,
+        locus_radius: float = 0.01,
         nuclear_radius: float = 1.0,
         bound_zone_thickness: float = 0.1,
+        dt: float = 0.21,
         bound_to_bound: float = None,
         unbound_to_bound: float = None,
+        enforce_boundary: bool = True,
     ):
 
         if initial_position is None:
@@ -30,9 +34,10 @@ class Trajectory(object):
         self.locus_radius = locus_radius
         self.nuclear_radius = nuclear_radius
         self.bound_zone_thickness = bound_zone_thickness
-
+        self.dt = dt
         self.bound_to_bound = bound_to_bound
         self.unbound_to_bound = unbound_to_bound
+        self.enforce_boundary = enforce_boundary
 
     def __len__(self):
         return len(self.positions)
@@ -83,22 +88,6 @@ class Trajectory(object):
         """
         self.positions.append(self.position + step)
 
-    def check_nucleus(
-        self, step, collision_style: str = "reflect"
-    ) -> Union[np.ndarray, bool]:
-
-        next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
-
-        nuclear_check = self.nuclear_radius > next_locus_extent
-
-        if not nuclear_check and collision_style == "reflect":
-
-            overstep = next_locus_extent - self.nuclear_radius
-            return step - overstep * step
-
-        if not nuclear_check and collision_style == "reject":
-            return nuclear_check
-
     def check_step_is_valid(self, step: np.ndarray, is_bound: bool = False) -> bool:
         """
         Return true/false if a proposed step leaves the nucleus or not.
@@ -114,10 +103,14 @@ class Trajectory(object):
 
         """
 
-        next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
+        if not self.enforce_boundary:
+            return True
 
-        # Check that locus doesn't leave bounds of the nucleus
+        # Determine radius is ideal step is taken
+        next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
+        # Check that ideal position does not leave bounds of the nucleus
         nuclear_check = self.nuclear_radius > next_locus_extent
+
         if not nuclear_check:
             return nuclear_check
         # If locus unbound, can always take next step, possibly leaving the bound zone
@@ -127,6 +120,78 @@ class Trajectory(object):
         diff_to_wall = self.nuclear_radius - next_locus_extent
         bound_check = diff_to_wall < self.bound_zone_thickness
         return bound_check
+
+    def step_mod(self, step: np.ndarray, is_bound: bool = False) -> np.ndarray:
+
+        """
+        When a step is determined to be invalid, this method alters the step
+        to stop at the barrier, both nuclear and bound zone
+
+        Parameters
+        ----------
+        step
+        is_bound
+
+        Returns step altered accordingly
+        -------
+        """
+
+        next_locus_extent = np.linalg.norm(self.position + step) + self.locus_radius
+
+        nuclear_check = self.nuclear_radius > next_locus_extent
+
+        if not nuclear_check:
+
+            ideal_position = self.position + step
+
+            collide_roots = np.roots(
+                [
+                    step[0] ** 2 + step[1] ** 2,
+                    2 * (step[0] + step[1]),
+                    self.position[0] ** 2
+                    + self.position[1] ** 2
+                    - (self.nuclear_radius - 0.01) ** 2,
+                ]
+            )
+
+            if np.abs(collide_roots[0]) < 1:
+                adj_step = step * (np.abs(collide_roots[0]))
+            elif np.abs(collide_roots[1]) < 1:
+                adj_step = step * (np.abs(collide_roots[1]))
+            else:
+                adj_step = step * 0.0001
+
+            return adj_step
+
+        diff_to_wall = self.nuclear_radius - next_locus_extent
+
+        bound_check = diff_to_wall < self.bound_zone_thickness
+
+        if not bound_check:
+
+            # TODO invert the above method for bound zone thickness
+            db_pos = self.position
+
+            ideal_position = self.position + step
+
+            collide_roots = np.roots(
+                [
+                    step[0] ** 2 + step[1] ** 2,
+                    2 * (step[0] + step[1]),
+                    self.position[0] ** 2
+                    + self.position[1] ** 2
+                    - (self.nuclear_radius - self.bound_zone_thickness + 0.0001) ** 2,
+                ]
+            )
+
+            if np.abs(collide_roots[0]) < 1:
+                adj_step = step * (np.abs(collide_roots[0]))
+            elif np.abs(collide_roots[1]) < 1:
+                adj_step = step * (np.abs(collide_roots[1]))
+            else:
+                adj_step = step * 0.0001
+
+            return adj_step
 
     def msd(self, lower_range: int = 0, upper_range: int = -1) -> float:
         """
@@ -212,6 +277,7 @@ class Trajectory(object):
         the_str += f"bound_zone_thickness:{self.bound_zone_thickness},"
         the_str += f"bound_to_bound:{self.bound_to_bound},"
         the_str += f"unbound_to_bound:{self.unbound_to_bound},"
+        the_str += f"dt:{self.dt},"
         the_str += f"\n"
 
         return the_str
@@ -245,19 +311,21 @@ def visualize_trajectory(
 
     # TODO implement bound zone time
 
-    alpha_vals = np.linspace(0.2, 0.8, N)
+    grad_cmap = cm.get_cmap("viridis", N)
 
-    for i, bound in zip(range(N - 1), bound_states[:-1]):
+    for i, bound in zip(range(N), bound_states[:-1]):
         if not bound:
             plt.plot(
-                positions[i : i + 2, 0],
-                positions[i : i + 2, 1],
-                color="orange",
-                alpha=alpha_vals[i],
+                positions[(i) : (i + 2), 0],
+                positions[(i) : (i + 2), 1],
+                color=colors.rgb2hex(grad_cmap(i)[:3]),
             )
         else:
             plt.plot(
-                positions[i : i + 2, 0], positions[i : i + 2, 1], color="navy", alpha=1
+                positions[i : i + 2, 0],
+                positions[i : i + 2, 1],
+                color="black",
+                alpha=0.5,
             )
 
     # if traj.bound_zone_thickness:
@@ -279,9 +347,20 @@ def visualize_trajectory(
         plt.fill(np.ravel(xs), np.ravel(ys), "gray", alpha=0.2)
 
     if show_final_locus:
-        pos = traj.position
+        pos_stop = traj.position
+        pos_start = traj.positions[0]
         # rad = traj.locus_radius
-        plt.scatter((pos[0]), (pos[1]), color="red", s=50, marker="o", zorder=1)
+        plt.scatter(
+            (pos_stop[0]), (pos_stop[1]), color="red", s=50, marker="s", zorder=N + 1
+        )
+        plt.scatter(
+            (pos_start[0]),
+            (pos_start[1]),
+            color="lime",
+            s=100,
+            marker=">",
+            zorder=N + 1,
+        )
         # x = np.linspace(pos[0]-rad, pos[0]+rad, 100)
         # plt.plot(x, np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
         # plt.plot(x, -np.sqrt(rad ** 2 - (x-pos[0]) ** 2), color="red")
