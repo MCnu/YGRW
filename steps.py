@@ -56,6 +56,9 @@ class UniformSteps(Stepper):
     def generate_step(self, prev_step=None, prev_angle=None):
         return np.random.uniform(self.lower, self.upper, size=2)
 
+    def generate_bound_step(self, prev_step=None, prev_angle=None):
+        return np.random.uniform(self.lower, self.upper, size=2)
+
 
 class GaussianSteps(Stepper):
     def __init__(self, mu: float = 0, sig: float = 1):
@@ -143,8 +146,8 @@ class GammaSteps(Stepper):
         magnitude = np.random.gamma(shape=self.shape, scale=self.scale, size=1)
         angle = np.random.uniform(low=-180, high=180, size=1)
 
-        x_step = float(np.cos(angle * deg) * magnitude)
-        y_step = float(np.sin(angle * deg) * magnitude)
+        x_step = np.cos(angle * deg) * magnitude
+        y_step = np.sin(angle * deg) * magnitude
 
         return np.array((x_step, y_step))
 
@@ -154,8 +157,8 @@ class GammaSteps(Stepper):
         )
         angle = np.random.uniform(low=-180, high=180, size=1)
 
-        x_step = float(np.cos(angle * deg) * magnitude)
-        y_step = float(np.sin(angle * deg) * magnitude)
+        x_step = np.cos(angle * deg) * magnitude
+        y_step = np.sin(angle * deg) * magnitude
 
         return np.array((x_step, y_step))
 
@@ -380,9 +383,9 @@ class FLESteps(Stepper):
         alpha: float = 0.448,
         bound_gamma: float = 0.00075,
         bound_alpha: float = 0.373,
-        dt: float = 0.210,
+        dt: float = 1,
         fle_random_seed: int = None,
-        bound_steps: str = "FLE",
+        boundstepper: Stepper = None,
     ):
 
         self.gamma = gamma
@@ -393,75 +396,55 @@ class FLESteps(Stepper):
         self.cur_step = 0
         self.real_step = 0
         self.step_batchsize = step_batchsize
-        self.bound_steps = bound_steps
-        (
-            self.pre_x,
-            self.pre_y,
-            self.bound_pre_x,
-            self.bound_pre_y,
-        ) = self._generate_correlated_noise(
-            steps=step_batchsize, fle_random_seed=fle_random_seed
-        )
-        #
-        self.boundstepper = None
-        if self.bound_steps == "gamma":
-            self.boundstepper = GammaSteps(3, 45, 2.7, 72)
+
+        (self.pre_x, self.pre_y) = self.generate_correlated_noise()
+
+        self.boundstepper = boundstepper
+
+        H = self.alpha / 2
+        bound_H = self.bound_alpha / 2
+        # Length scale for process
+        self.norm_msd = sqrt(2 * self.gamma) * self.dt ** H
+        self.bound_norm_msd = sqrt(2 * self.bound_gamma) * self.dt ** bound_H
 
         super().__init__()
 
-    def generate_step(self, regenerate: bool = False, *args, **kwargs):
-
-        if self.cur_step == self.step_batchsize or regenerate:
+    def generate_step(self, *args, **kwargs):
+        if self.cur_step >= self.step_batchsize:
             adj_batchsize = self.step_batchsize - self.real_step
-            if adj_batchsize < 0:
+            if adj_batchsize <= 0:
                 adj_batchsize = self.step_batchsize
 
-            (
-                self.pre_x,
-                self.pre_y,
-                self.bound_pre_x,
-                self.bound_pre_y,
-            ) = self._generate_correlated_noise(steps=adj_batchsize)
+            self.regenerate_correlated_noise()
+
             self.cur_step = 0
 
-        dx = self.pre_x[self.cur_step]
-        dy = self.pre_y[self.cur_step]
+        dx = self.norm_msd * self.pre_x[self.cur_step]
+        dy = self.norm_msd * self.pre_y[self.cur_step]
         self.real_step += 1
         self.cur_step += 1
-        return np.array([dx, dy]).reshape(2)
 
-    def generate_bound_step(self, regenerate: bool = False, *args, **kwargs):
-        if self.bound_steps == "FLE":
-            if self.cur_step == self.step_batchsize or regenerate:
+        return np.array([dx, dy])
+
+    def generate_bound_step(self, *args, **kwargs):
+        if self.boundstepper == None:
+            if self.cur_step >= self.step_batchsize:
                 adj_batchsize = self.step_batchsize - self.real_step
-                if adj_batchsize < 0:
+                if adj_batchsize <= 0:
                     adj_batchsize = self.step_batchsize
-
-                (
-                    self.pre_x,
-                    self.pre_y,
-                    self.bound_pre_x,
-                    self.bound_pre_y,
-                ) = self._generate_correlated_noise(steps=adj_batchsize)
+                self.regenerate_correlated_noise()
                 self.cur_step = 0
+            dx = self.bound_norm_msd * self.pre_x[self.cur_step]
+            dy = self.bound_norm_msd * self.pre_y[self.cur_step]
+        else:
+            (dx, dy) = self.boundstepper.generate_bound_step()
 
-        dx = self.bound_pre_x[self.cur_step]
-        dy = self.bound_pre_y[self.cur_step]
         self.real_step += 1
         self.cur_step += 1
-        return np.array([dx, dy]).reshape(2)
 
-    # TODO REMOVE below conditional statements and the need for method string
-    # elif self.bound_steps == "gamma":
-    #     return self.boundstepper.generate_bound_step()
+        return np.array([dx, dy])
 
-    # elif self.bound_steps == "gauss":
-    #     return self.boundstepper.generate_bound_step()
-
-    # elif self.bound_steps == "scaled":
-    #     return self.generate_bound_step(*args, **kwargs) / 10
-
-    def _generate_correlated_noise(
+    def generate_correlated_noise(
         self,
         steps: int = None,
         fle_random_seed: int = None,
@@ -508,6 +491,12 @@ class FLESteps(Stepper):
 
         # Fourier transform pre-computed values earlier
         # Corresponds to step a on page 1091 of Dietrich & Newsam,
+        try:
+            np.real(np.fft.fft(r)) / (2 * steps)
+        except:
+            print(steps)
+            print(r)
+
         s = np.real(np.fft.fft(r)) / (2 * steps)
         strans = np.lib.scimath.sqrt(s)
 
@@ -531,23 +520,33 @@ class FLESteps(Stepper):
         H = self.alpha / 2
         bound_H = self.bound_alpha / 2
         # Length scale for process
-        norm_msd = sqrt(2 * self.gamma) * self.dt ** H
-        bound_norm_msd = sqrt(2 * self.bound_gamma) * self.dt ** bound_H
+        # norm_msd = sqrt(2 * self.gamma) * self.dt ** H
+        # bound_norm_msd = sqrt(2 * self.bound_gamma) * self.dt ** bound_H
         # If gamma is ordinarily in m^2/s,
         # to convert to m^2/ s^alpha,
         # multiply by  1 s / s^alpha,
         # 1 s /
 
         # Store correlated noise values. Step d.
-        x_steps = norm_msd * np.real(second_fft_x[0:steps])
-        y_steps = norm_msd * np.real(second_fft_y[0:steps])
-        bound_x_steps = bound_norm_msd * np.real(second_fft_x[0:steps])
-        bound_y_steps = bound_norm_msd * np.real(second_fft_y[0:steps])
+        # x_sreps = norm_msd * np.real(second_fft_x[0:steps])
+        # y_steps = norm_msd * np.real(second_fft_y[0:steps])
+        # bound_x_steps = bound_norm_msd * np.real(second_fft_x[0:steps])
+        # bound_y_steps = bound_norm_msd * np.real(second_fft_y[0:steps])
 
-        return x_steps, y_steps, bound_x_steps, bound_y_steps
+        x_noise = np.real(second_fft_x[0:steps])
+        y_noise = np.real(second_fft_y[0:steps])
+
+        return x_noise, y_noise
+
+    def regenerate_correlated_noise(self, *args, **kwargs):
+
+        (
+            self.pre_x,
+            self.pre_y,
+        ) = self.generate_correlated_noise()
+        self.cur_step = 0
 
 
-# TODO REMOVE
 def compute_drag(prev_step: None, spring_constant: float = -0.5):
     if prev_step is None:
         prev_x_drag = 0

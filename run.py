@@ -5,7 +5,7 @@ Functions to perform a simulation of a trajectory.
 
 import numpy as np
 from YGRW.trajectory import Trajectory
-from YGRW.steps import Stepper, UniformSteps, ExperimentalAngleSteps, FLESteps
+from YGRW.steps import Stepper, UniformSteps, FLESteps
 from tqdm import tqdm
 
 
@@ -23,7 +23,6 @@ def generate_trajectory(
     fail_cutoff: int = 200,
     write_after: bool = False,
     write_format: str = "csv",
-    enforce_boundary: bool = True,
 ):
     """
     All length-scale units are in micron.
@@ -49,7 +48,6 @@ def generate_trajectory(
         bound_zone_thickness=bound_zone_thickness,
         bound_to_bound=bound_to_bound,
         unbound_to_bound=unbound_to_bound,
-        enforce_boundary=enforce_boundary,
     )
 
     if isinstance(stepper, FLESteps):
@@ -59,7 +57,6 @@ def generate_trajectory(
 
     taken_steps = 0
     failed_steps = 0
-    regenerations = 0
     if watch_progress:
         pbar = tqdm(total=timesteps)
     while taken_steps < timesteps:
@@ -69,27 +66,13 @@ def generate_trajectory(
         )
         while failed_steps < fail_cutoff:
             if traj.is_bound:
-                if failed_steps > 0 and ("FLE" in str(stepper)):
-                    regenerations += 1
-                    cur_step = stepper.generate_bound_step(regenerate=True)
-                else:
-                    cur_step = stepper.generate_bound_step(
-                        prev_step=traj.prev_step, prev_angle=traj.prev_angle
-                    )
+                cur_step = stepper.generate_bound_step(
+                    prev_step=traj.prev_step, prev_angle=traj.prev_angle
+                )
             else:
-                if failed_steps > 0 and ("FLE" in str(stepper)):
-                    regenerations += 1
-                    cur_step = stepper.generate_step(regenerate=True)
-                else:
-                    cur_step = stepper.generate_step(
-                        prev_step=traj.prev_step, prev_angle=traj.prev_angle
-                    )
-
-            # TODO fix redundancy of check_nucleus and check_step_is_valid
-            # TODO re-establish FLE after each collision
-
-            # vvv once traj,check_nucleus is gone, remove this vvv
-            # cur_step = np.array(traj.check_nucleus(cur_step))
+                cur_step = stepper.generate_step(
+                    prev_step=traj.prev_step, prev_angle=traj.prev_angle
+                )
 
             if traj.check_step_is_valid(step=cur_step, is_bound=traj.is_bound):
                 traj.take_step(cur_step)
@@ -99,15 +82,20 @@ def generate_trajectory(
                 failed_steps = 0
                 break
             else:
-                cur_step = traj.step_mod(step=cur_step, is_bound=traj.is_bound)
-                if (
-                    np.linalg.norm(traj.position + cur_step) + traj.locus_radius
-                    > traj.nuclear_radius
-                ):
+                cur_step = traj.step_rescale(step=cur_step, is_bound=traj.is_bound)
+                # If using the FLE stepper, it must regen noise after collision
+                if "FLE" in str(stepper):
+                    stepper.regenerate_correlated_noise()
+                # If step mod cannot take a real step, no step is taken
+
+                rad_post_step = traj.radius_post_step(step=cur_step)
+
+                if rad_post_step > traj.nuclear_radius:
                     cur_step = np.zeros(2)
-                elif traj.is_bound and (
-                    np.linalg.norm(traj.position + cur_step) + traj.locus_radius
-                ) < (traj.nuclear_radius - traj.bound_zone_thickness):
+                # Same as above, but for bound steps and bound barrier
+                elif traj.is_bound and rad_post_step < (
+                    traj.nuclear_radius - traj.bound_zone_thickness
+                ):
                     cur_step = np.zeros(2)
                 traj.take_step(cur_step)
                 taken_steps += 1
@@ -118,7 +106,7 @@ def generate_trajectory(
 
         if failed_steps == fail_cutoff:
             print(f"Warning: Run got stuck at step {taken_steps}")
-            break
+            raise
     if watch_progress:
         pbar.close()
 
@@ -134,7 +122,9 @@ def generate_trajectory(
 
 
 def generate_current_bound(
-    traj: Trajectory, bound_to_bound: float = 0.5, unbound_to_bound: float = 0.2
+    traj: Trajectory,
+    bound_to_bound: float = 0,
+    unbound_to_bound: float = 0,
 ) -> bool:
     """
     Bound transition parameters describe the probability the next
