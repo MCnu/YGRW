@@ -335,7 +335,6 @@ class GammaAngleSteps(GammaSteps):
         angle = self.astepper.generate_angle()
         new_theta = prev_angle + angle
 
-        angle_mag = abs(angle)
         magnitude = gengamma.rvs(self.bound_shape, self.bound_rate, 1)
 
         x_step = np.cos(new_theta) * magnitude
@@ -401,15 +400,18 @@ class FLESteps(Stepper):
 
         self.boundstepper = boundstepper
 
+        # preprocess hurst exponent for movement regimens
         H = self.alpha / 2
         bound_H = self.bound_alpha / 2
-        # Length scale for process
+
+        # preprocess msd normalization for movement regimens
         self.norm_msd = sqrt(2 * self.gamma) * self.dt ** H
         self.bound_norm_msd = sqrt(2 * self.bound_gamma) * self.dt ** bound_H
 
         super().__init__()
 
     def generate_step(self, *args, **kwargs):
+        # If the trajectory exhausts the generated steps, regenerate
         if self.cur_step >= self.step_batchsize:
             adj_batchsize = self.step_batchsize - self.real_step
             if adj_batchsize <= 0:
@@ -419,6 +421,7 @@ class FLESteps(Stepper):
 
             self.cur_step = 0
 
+        # normalize noise to the expected MSD
         dx = self.norm_msd * self.pre_x[self.cur_step]
         dy = self.norm_msd * self.pre_y[self.cur_step]
         self.real_step += 1
@@ -436,6 +439,7 @@ class FLESteps(Stepper):
                 self.cur_step = 0
             dx = self.bound_norm_msd * self.pre_x[self.cur_step]
             dy = self.bound_norm_msd * self.pre_y[self.cur_step]
+        # When a different bound stepper is called, it will be employed here
         else:
             (dx, dy) = self.boundstepper.generate_bound_step()
 
@@ -491,11 +495,6 @@ class FLESteps(Stepper):
 
         # Fourier transform pre-computed values earlier
         # Corresponds to step a on page 1091 of Dietrich & Newsam,
-        try:
-            np.real(np.fft.fft(r)) / (2 * steps)
-        except:
-            print(steps)
-            print(r)
 
         s = np.real(np.fft.fft(r)) / (2 * steps)
         strans = np.lib.scimath.sqrt(s)
@@ -517,8 +516,8 @@ class FLESteps(Stepper):
 
         # Scale results for final use.
         # Hurst exponent
-        H = self.alpha / 2
-        bound_H = self.bound_alpha / 2
+        # H = self.alpha / 2
+        # bound_H = self.bound_alpha / 2
         # Length scale for process
         # norm_msd = sqrt(2 * self.gamma) * self.dt ** H
         # bound_norm_msd = sqrt(2 * self.bound_gamma) * self.dt ** bound_H
@@ -539,11 +538,14 @@ class FLESteps(Stepper):
         return x_noise, y_noise
 
     def regenerate_correlated_noise(self, *args, **kwargs):
+        # This adjusts the batchsize to
+        temp_batch_size = self.step_batchsize - self.real_step
 
-        (
-            self.pre_x,
-            self.pre_y,
-        ) = self.generate_correlated_noise()
+        # someitmes batches become too small for fft
+        if temp_batch_size < 100:
+            temp_batch_size = 100
+
+        (self.pre_x, self.pre_y) = self.generate_correlated_noise(steps=temp_batch_size)
         self.cur_step = 0
 
 

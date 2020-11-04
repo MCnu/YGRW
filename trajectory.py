@@ -169,7 +169,7 @@ class Trajectory(object):
                 - (self.nuclear_radius - 0.01) ** 2
             )
 
-            if b_term ** 2 - (4 * a_term * c_term) < 0:
+            if (4 * a_term * c_term) > (b_term ** 2):
                 adj_step = step * 0.0001
                 return adj_step
 
@@ -205,6 +205,10 @@ class Trajectory(object):
                 + self.position[1] ** 2
                 - (self.nuclear_radius - self.bound_zone_thickness + 0.0001) ** 2
             )
+
+            if (4 * a_term * c_term) > (b_term ** 2):
+                adj_step = step * 0.0001
+                return adj_step
 
             lower_root = ((-b_term) - np.sqrt(b_term ** 2 - (4 * a_term * c_term))) / (
                 2 * a_term
