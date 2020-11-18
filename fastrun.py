@@ -2,6 +2,8 @@ from numba import njit, jit
 import numpy as np
 from math import sqrt
 from tqdm import tqdm
+import scipy as sci
+
 @jit
 def generate_correlated_noise(
         steps: int = None,
@@ -52,7 +54,7 @@ def generate_correlated_noise(
     # Fourier transform pre-computed values earlier
     # Corresponds to step a on page 1091 of Dietrich & Newsam,
 
-    s = np.real(np.fft.fft(r)) / (2 * steps)
+    s = np.real(sci.fft.fft(r)) / (2 * steps)
     strans = np.lib.scimath.sqrt(s)
 
     if fle_random_seed:
@@ -63,7 +65,7 @@ def generate_correlated_noise(
         size=(2 * steps)
     )
     # Compute FFT: (step c),
-    second_fft = np.fft.fft(np.multiply(strans, randnorm_complex))
+    second_fft = sci.fft.fft(np.multiply(strans, randnorm_complex))
 
 
     x_noise = np.real(second_fft[0:steps])
@@ -144,17 +146,20 @@ def fast_run(noise, radius):
 
     return traj
 
-N = 1000000
-alpha = .5
-dt = 1e-6
+
+experimental_time = 42
+#experimental_time = 10
+dt = 1e-5
+N = int(experimental_time/dt)
+alpha = .45
 gamma = 0.00375
 H = alpha / 2
 
-radius =1
+radius = 1
 scaling =sqrt(2 * gamma) * dt ** H
 
 
-number_of_runs = 1000
+number_of_runs = 5
 runs = []
 
 all_radii = []
@@ -166,8 +171,8 @@ for i in tqdm(range(number_of_runs)):
 
     steps = scaling*np.array(generate_correlated_noise(steps=N,fle_random_seed=i)).T
 
-    steps[0][0] = np.cos(initial_angle)*initial_radius
-    steps[0][1] = np.sin(initial_angle)* initial_radius
+    steps[0][0] = np.cos(initial_angle) * initial_radius
+    steps[0][1] = np.sin(initial_angle) * initial_radius
     run = fast_run(steps, 1)
 
     radii = np.sqrt(np.sum(np.square(run),axis=1))
@@ -191,6 +196,6 @@ import matplotlib.pyplot as plt
 #plt.plot(x, -np.sqrt(radius ** 2 - x ** 2), color="black")
 #plt.show()
 
-plt.hist(all_radii,bins=20)
-plt.show()
+#plt.hist(all_radii,bins=20)
+#plt.show()
 
