@@ -416,11 +416,8 @@ class FLESteps(Stepper):
             adj_batchsize = self.step_batchsize - self.real_step
             if adj_batchsize <= 0:
                 adj_batchsize = self.step_batchsize
-
             self.regenerate_correlated_noise()
-
-            self.cur_step = 0
-
+            
         # normalize noise to the expected MSD
         dx = self.norm_msd * self.pre_x[self.cur_step]
         dy = self.norm_msd * self.pre_y[self.cur_step]
@@ -436,7 +433,8 @@ class FLESteps(Stepper):
                 if adj_batchsize <= 0:
                     adj_batchsize = self.step_batchsize
                 self.regenerate_correlated_noise()
-                self.cur_step = 0
+            
+            # normalize noise to the expected bound MSD
             dx = self.bound_norm_msd * self.pre_x[self.cur_step]
             dy = self.bound_norm_msd * self.pre_y[self.cur_step]
         # When a different bound stepper is called, it will be employed here

@@ -355,7 +355,7 @@ def visualize_trajectory(
             plt.plot(
                 positions[i : i + 2, 0],
                 positions[i : i + 2, 1],
-                color="black",
+                color="orange",
                 alpha=0.5,
             )
 
