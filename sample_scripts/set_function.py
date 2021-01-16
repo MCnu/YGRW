@@ -13,10 +13,10 @@ import numpy as np
 np.random.seed(8675309)
 
 # Simple trajectory parameters
-nsteps = 2000 # set number of steps per trajectory
-time_interval = 0.21 # set time interval between steps
-nuc_rad = 1 # set nuclear radius
-loc_rad = 0.001 # set locus particle radius
+nsteps = 2000  # set number of steps per trajectory
+time_interval = 0.21  # set time interval between steps
+nuc_rad = 1  # set nuclear radius
+loc_rad = 0.001  # set locus particle radius
 
 # translate extracted gamma from 2D to dimension-less (divide by four)
 # Divide by two if extracted from 1D, divide by six if extracted from 3D
@@ -31,10 +31,10 @@ adjbgam = 0.003 / 4
 
 # Bound zone parameters
 
-bzt = 0.05 # assign bind zone thickness in micrometers, 50nm = nuclear basket height
-u2b = 0.9 # assign binding rate for locus within bound zone
-b2b = 0.95 # assign retention rate (aka inverse of unbinding rate)
-n_trajecs = 100 # assign number of trajectories to generate
+bzt = 0.05  # assign bind zone thickness in micrometers, 50nm = nuclear basket height
+u2b = 0.9  # assign binding rate for locus within bound zone
+b2b = 0.95  # assign retention rate (aka inverse of unbinding rate)
+n_trajecs = 100  # assign number of trajectories to generate
 
 # for debugging, generate seed array for individual trajectories.
 # You can thus re-run an individual trajectory if you want to inspect it in closer detail.
