@@ -59,6 +59,12 @@ def generate_trajectory(
     failed_steps = 0
     if watch_progress:
         pbar = tqdm(total=timesteps)
+
+    # Central loop of Trajectory runner
+    # 1. Determine if next step will be bound,
+    # 2. Attempt to take next step, Rescale step depending on if bound or not,
+    # 3. Adjust step if step is invalid
+
     while taken_steps < timesteps:
 
         traj.bound_states.append(
@@ -84,7 +90,7 @@ def generate_trajectory(
             else:
                 cur_step = traj.step_rescale(step=cur_step, is_bound=traj.is_bound)
                 # If using the FLE stepper, it must regen noise after collision
-                if "FLE" in str(stepper):
+                if "FBM" in str(stepper):
                     stepper.regenerate_correlated_noise()
                 # If step mod cannot take a real step, no step is taken
 
@@ -97,6 +103,7 @@ def generate_trajectory(
                     traj.nuclear_radius - traj.bound_zone_thickness
                 ):
                     cur_step = np.zeros(2)
+                # Take newly adjusted step
                 traj.take_step(cur_step)
                 taken_steps += 1
                 if watch_progress:

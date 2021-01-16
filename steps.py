@@ -16,11 +16,13 @@ deg = np.pi / 180
 # Abstract classes
 # ------------------------
 
+
 class Stepper(ABC):
     """
     Abstract class which implements generate_step and generate_bound_step methods
     for subsequent steppers to work off of.
     """
+
     def __init__(self):
         pass
 
@@ -54,6 +56,7 @@ class AngleStepper(ABC):
     def generate_angle(self, *args, **kwargs):
         raise NotImplementedError
 
+
 # ------------------------
 # Specific Stepper classes
 # ------------------------
@@ -61,14 +64,14 @@ class AngleStepper(ABC):
 
 class FBMSteps(Stepper):
     def __init__(
-            self,
-            step_batchsize: int = 200,
-            gamma: float = 0.00375,
-            alpha: float = 0.448,
-            bound_gamma: float = 0.00075,
-            bound_alpha: float = 0.373,
-            dt: float = 1,
-            boundstepper: Stepper = None,
+        self,
+        step_batchsize: int = 200,
+        gamma: float = 0.00375,
+        alpha: float = 0.448,
+        bound_gamma: float = 0.00075,
+        bound_alpha: float = 0.373,
+        dt: float = 1,
+        boundstepper: Stepper = None,
     ):
         """
         Stepper which generates steps consistent with Fractional Brownian Motion (i.e. correlated Gaussian noise with
@@ -150,9 +153,9 @@ class FBMSteps(Stepper):
         return np.array([dx, dy])
 
     def generate_correlated_noise(
-            self,
-            steps: int = None,
-            fle_random_seed: int = None,
+        self,
+        steps: int = None,
+        fle_random_seed: int = None,
     ):
         """
         Generates a series of correlated noise values.
@@ -185,14 +188,14 @@ class FBMSteps(Stepper):
         pre_r[0] = 1.0
         for k in range(1, steps + 1):
             fd_addition = (
-                                  (k + 1) ** self.alpha - 2 * (k ** self.alpha) + (k - 1) ** self.alpha
-                          ) / 2
+                (k + 1) ** self.alpha - 2 * (k ** self.alpha) + (k - 1) ** self.alpha
+            ) / 2
             pre_r[k] = fd_addition
         nrel = len(pre_r)
         r = np.zeros(2 * nrel - 2)
         r[:nrel] = pre_r
         reverse_r = np.flip(pre_r)
-        r[nrel - 1:] = reverse_r[:-1]
+        r[nrel - 1 :] = reverse_r[:-1]
 
         # Fourier transform pre-computed values earlier
         # Corresponds to step a on page 1091 of Dietrich & Newsam,
@@ -596,7 +599,6 @@ class ExperimentalAngleSteps(Stepper):
     def generate_bound_step(self, prev_step, prev_angle):
 
         return self.generate_step(prev_step, prev_angle) / 10
-
 
 
 def compute_drag(prev_step: None, spring_constant: float = -0.5):

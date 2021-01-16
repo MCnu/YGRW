@@ -10,7 +10,10 @@ as well as scripts which were used to generate the data which were used to fill 
 ### Manuscript Scripts
 
 If you would like to review the script which was used to generate the trajectories seen in the paper,
-please see [FILE NAME.PY]. 
+please see the scripts folder and review `set_function.py`.
+
+You can also run unit tests in the `tests` directory by running `pytest` to ensure that the scripts
+are working on your machine.
 
 
 ### Simulation Library Organization
