@@ -1,1 +1,0 @@
-Repository for Simulator. This project is a collaboration between Steven Torrisi and M. Chas Sumner.

@@ -45,7 +45,6 @@ def test_jump_dist_from_angle():
 
     result = jdfa.distribution_from_angle(2.5)
     assert len(result) == 500
-    # assert len(jdfa.jump_size_distribution_from_angle(0)) == 500
 
     import matplotlib.pyplot as plt
 

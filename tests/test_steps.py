@@ -16,7 +16,7 @@ from YGRW.steps import (
     AngleStepper,
     UniformAngle,
     ExperimentalIndependentAngle,
-    FLESteps,
+    FBMSteps,
 )
 
 
@@ -69,20 +69,23 @@ def test_experimental_angle():
     assert np.mean(angles) > 90
 
 
-def test_fle_stepper():
+def test_fbm_stepper():
 
-    fle_stepper = FLESteps(step_batchsize=10, fle_random_seed=1)
+    np.random.seed(42)
+    fbm_stepper = FBMSteps(step_batchsize=10)
+    x1, y1 = fbm_stepper.pre_x, fbm_stepper.pre_y
+    init_step = fbm_stepper.norm_msd * np.array([x1[0], y1[0]])
+    returned_step = fbm_stepper.generate_step()
+    assert np.array_equal(returned_step, init_step)
 
-    x1, y1 = fle_stepper._generate_correlated_noise(fle_random_seed=1)
-    assert np.array_equal(fle_stepper.generate_step(), [x1[0], y1[0]])
-
-    x2, y2 = fle_stepper._generate_correlated_noise(fle_random_seed=1)
+    np.random.seed(42)
+    x2, y2 = fbm_stepper.generate_correlated_noise()
     assert np.array_equal(x1, x2)
     assert np.array_equal(y1, y2)
 
     prev_x = 0
     prev_y = 0
     for n in range(10):
-        x, y = fle_stepper.generate_step()
+        x, y = fbm_stepper.generate_step()
         assert prev_x != x
         assert prev_y != y

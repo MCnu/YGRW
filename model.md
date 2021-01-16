@@ -6,7 +6,6 @@
 Experiments performed in the Brickner group at Northwestern University track
  the dynamics of chromatin loci within yeast cells as they move within
   the nuclear medium and towards the periphery of the nucleus. 
-  
 
 In order to gain a better mechanistic understanding of the dynamics of
  binding to the periphery, we built a random walk generator to capture the
@@ -19,7 +18,8 @@ Our simple model attempts to  recapture the observed experimental behavior via
   attached to the chromosome. This can be thought of as providing a
    small restoring force to random displacements of the locus throughout the
     nucleus. Anticorrelation between successive steps of the random walk
-     captures this physical feature.
+     captures this physical feature. In our associated manuscript, we capture this using
+   anticorrelated Gaussian random noise.
 - *Limited domain.* The locus lives within the cell nucleus, which produces the
  anomalous diffusion profile expected from the MSD of unbound nucleoplasm
   motion.
@@ -49,8 +49,7 @@ We model the motion of the locus as
   bound to the periphery of the nucleus, or unbound in the nucleoplasm.
 - In the *unbound* state, the locus is free to move in the nucleoplasm.
      The locus moves in a subdiffusive regime
-    , proceeding on an anticorrelated random walk with step size and angle
-     distributions parameterized from experimental data.
+    , proceeding on an anticorrelated random walk.
 - In the *bound* state, the locus is attached to the periphery. The
      bound state can only occur while the locus is within a `bound zone
      ` which models the periphery, defined as when the edge of the locus is
@@ -64,4 +63,9 @@ of the nuclear wall. While bound, the locus
          with a random probability $z_{unbind}$ with each step.
 ### Translation
 
-- In the bound state, the locus moves in a 
+We supply a random walk simulator which is uses constant timesteps and continuously varying step length.
+Currently, the most sophisticated step model which we have implemented is Fractional Brownian Motion, which when the particle
+is far from the boundary, can be understood as equivalent to Fractional Langevin dynamics in the overdamped limit when no driving force is present.
+Please see the methods section of the manuscript (*link to come*) for greater detail on the details of the implementation.
+
+
