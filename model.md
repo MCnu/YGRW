@@ -64,4 +64,9 @@ of the nuclear wall. While bound, the locus
          with a random probability $z_{unbind}$ with each step.
 ### Translation
 
-- In the bound state, the locus moves in a 
+We supply a random walk simulator which is uses constant timesteps and continuously varying step length.
+Currently, the most sophisticated step model which we have implemented is Fractional Brownian Motion, which when the particle
+is far from the boundary, can be understood as equivalent to Fractional Langevin dynamics in the overdamped limit when no driving force is present.
+Please see the methods section of the manuscript (*link to come*) for greater detail on the details of the implementation.
+
+

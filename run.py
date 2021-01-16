@@ -5,7 +5,7 @@ Functions to perform a simulation of a trajectory.
 
 import numpy as np
 from YGRW.trajectory import Trajectory
-from YGRW.steps import Stepper, UniformSteps, FLESteps
+from YGRW.steps import Stepper, UniformSteps, FBMSteps
 from tqdm import tqdm
 
 
@@ -50,7 +50,7 @@ def generate_trajectory(
         unbound_to_bound=unbound_to_bound,
     )
 
-    if isinstance(stepper, FLESteps):
+    if isinstance(stepper, FBMSteps):
         assert stepper.step_batchsize == timesteps, (
             "Batch for random generation" "must agree with run length."
         )

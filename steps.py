@@ -14,6 +14,10 @@ deg = np.pi / 180
 
 
 class Stepper(ABC):
+    """
+    Abstract class which implements generate_step and generate_bound_step methods
+    for subsequent steppers to work off of.
+    """
     def __init__(self):
         pass
 
@@ -31,6 +35,8 @@ class Stepper(ABC):
 
 class AngleStepper(ABC):
     """
+    Abstract class for generating an angle of a step- used to complement steppers like UniformSteps
+    which yield a step length but not a direction.
     Generates an angle for a successive step defined with respect to the previous
     step along [-180, 180] where clockwise is positive and counterclockwise is
     negative. In other words, an angle of 0 would correspond to no change in angle,
@@ -374,7 +380,7 @@ class ExperimentalAngleSteps(Stepper):
         return self.generate_step(prev_step, prev_angle) / 10
 
 
-class FLESteps(Stepper):
+class FBMSteps(Stepper):
     def __init__(
         self,
         step_batchsize: int = 200,
@@ -383,9 +389,23 @@ class FLESteps(Stepper):
         bound_gamma: float = 0.00075,
         bound_alpha: float = 0.373,
         dt: float = 1,
-        fle_random_seed: int = None,
         boundstepper: Stepper = None,
     ):
+        """
+        Stepper which generates steps consistent with Fractional Brownian Motion (i.e. correlated Gaussian noise with
+        no driving force in the overdamped limit). Uses the method of Dietrich and Newsam, 1997
+        (DOI: 10.1137/S1064827592240555).
+
+        Parameters
+        ----------
+        step_batchsize
+        gamma
+        alpha
+        bound_gamma
+        bound_alpha
+        dt
+        boundstepper
+        """
 
         self.gamma = gamma
         self.alpha = alpha
