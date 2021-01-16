@@ -6,50 +6,38 @@ Created on Tue Sep  8 21:28:40 2020
 """
 from YGRW.run import generate_trajectory
 from YGRW.trajectory import Trajectory
-from YGRW.steps import UniformSteps, GaussianSteps, FBMSteps
+from YGRW.steps import FBMSteps
 import numpy as np
 
-
+# Master random seed which dictates the generation of run-specific random seeds
 np.random.seed(8675309)
 
-# set number of steps per trajectory
-nsteps = 2000
-
-# set time interval between steps
-time_interval = 0.21
-
-# set nuclear radius
-nuc_rad = 1
-
-# set locus particle radius
-loc_rad = 0.001
-
+# Simple trajectory parameters
+nsteps = 2000 # set number of steps per trajectory
+time_interval = 0.21 # set time interval between steps
+nuc_rad = 1 # set nuclear radius
+loc_rad = 0.001 # set locus particle radius
 
 # translate extracted gamma from 2D to dimension-less (divide by four)
 # Divide by two if extracted from 1D, divide by six if extracted from 3D
 
-# URA3 gamma/alpha parameter inputs
+# URA3 gamma/alpha parameter inputs for steps taken in 'unbound' state
 adjalpha = 0.52
 adjgam = 0.015 / 4
 
-# Bound paramter inputs
+# Parameter inputs for steps taken in 'bound' state
 adjbalpha = 0.373
 adjbgam = 0.003 / 4
 
+# Bound zone parameters
 
-# assign bind zone thickness in micrometers, 50nm = nuclear basket height
-bzt = 0.05
+bzt = 0.05 # assign bind zone thickness in micrometers, 50nm = nuclear basket height
+u2b = 0.9 # assign binding rate for locus within bound zone
+b2b = 0.95 # assign retention rate (aka inverse of unbinding rate)
+n_trajecs = 100 # assign number of trajectories to generate
 
-# assign binding rate for locus within bound zone
-u2b = 0.9
-
-# assign retention rate (aka inverse of unbinding rate)
-b2b = 0.95
-
-# assign number of trajectories to generate
-n_trajecs = 100
-
-# for debugging, generate seed array for individual trajectories
+# for debugging, generate seed array for individual trajectories.
+# You can thus re-run an individual trajectory if you want to inspect it in closer detail.
 seed_array = np.random.uniform(10000, 99999, size=n_trajecs)
 
 # Debug or n passage option: stop trajectory when a step cannot be completed
@@ -57,16 +45,18 @@ seed_array = np.random.uniform(10000, 99999, size=n_trajecs)
 # This can be set to nsteps for no limit
 how_big_to_fail = nsteps
 
-
+# Main loop to generate trajectories
 for trajecs in range(0, n_trajecs):
+    # Set random seed for individual run
     cur_seed = int(seed_array[trajecs])
     print(cur_seed)
     np.random.seed(cur_seed)
 
-    # Sets a random start position
+    # Sets a random start position by sampling uniformly in space
     ranpos = np.random.uniform(-2.5, 2.5, size=2)
     while np.sqrt(ranpos[0] ** 2 + ranpos[1] ** 2) >= (1):
         ranpos = np.random.uniform(-1, 1, size=2)
+
     gtt = generate_trajectory(
         timesteps=nsteps,
         dt=time_interval,
