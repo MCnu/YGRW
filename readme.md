@@ -1,5 +1,5 @@
 # Yeast Chromatin Random Walk Dynamics
-# By Michael Chas Sumner and Steven B. Torrisi
+## By Michael Chas Sumner and Steven B. Torrisi
 
 A random walk simulator for modeling a chromatin locus diffusing through the nucleus of a yeast cell, complementary to experiments performed by Michael Sumner at the Brickner group at Northwestern University.
 This is the full numerical / computational supplement to a BioRxiv preprint (*soon to come!*).
@@ -23,9 +23,14 @@ please see [FILE NAME.PY].
  - `model.md` contains an overview of the model's details.
 -----
 
-### Citation
+#### Citation
 If you use any code from this repository for your own experiments or as a starting point for the design of your own
 simulator, please consider citing our manuscript:
 .....
 M.C. Sumner, S.B. Torrisi, Donna Garvey Bricker, Jason Bricker
 
+
+#### Acknowledgements
+
+Helpful correspondence with Yaojun Zhang, Olga Dudko, Thomas Vojta, and Reza Vafabakhsh informed the decisions and design
+of this codebase.

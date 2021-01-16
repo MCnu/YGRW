@@ -107,6 +107,7 @@ def generate_trajectory(
         if failed_steps == fail_cutoff:
             print(f"Warning: Run got stuck at step {taken_steps}")
             raise
+
     if watch_progress:
         pbar.close()
 

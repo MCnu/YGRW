@@ -12,6 +12,9 @@ DATA_DIR = os.path.join(CUR_DIR, "data")
 
 deg = np.pi / 180
 
+# ------------------------
+# Abstract classes
+# ------------------------
 
 class Stepper(ABC):
     """
@@ -50,6 +53,221 @@ class AngleStepper(ABC):
     @abstractmethod
     def generate_angle(self, *args, **kwargs):
         raise NotImplementedError
+
+# ------------------------
+# Specific Stepper classes
+# ------------------------
+
+
+class FBMSteps(Stepper):
+    def __init__(
+            self,
+            step_batchsize: int = 200,
+            gamma: float = 0.00375,
+            alpha: float = 0.448,
+            bound_gamma: float = 0.00075,
+            bound_alpha: float = 0.373,
+            dt: float = 1,
+            boundstepper: Stepper = None,
+    ):
+        """
+        Stepper which generates steps consistent with Fractional Brownian Motion (i.e. correlated Gaussian noise with
+        no driving force in the overdamped limit).
+
+        Based on the algorithm of
+        C.R. Dietrich and G.N. Newsam,
+        SIAM J. Sci. Comput., 18(4), 1088–1107.
+        https://doi.org/10.1137/S1064827592240555
+
+        Parameters
+        ----------
+        step_batchsize: Number of steps of random correlated noise to generate.
+        gamma: scales the stepsizes during 'unbound' diffusion (in nucleoplasm, or near periphery but unbounded)
+        alpha: controls degree of correlation / anti-correlation during 'unbound' diffusion
+        bound_gamma: scales the stepsizes during 'bound' diffusion (when in 'bound zone' near periphery and bound state begins)
+        bound_alpha: controls degree of correlation / anti-correlation during 'bound' diffusion
+        dt: constant time-step
+        boundstepper: Can allow for a seperate stepper to be used for 'bound' diffusion
+        """
+
+        self.gamma = gamma
+        self.alpha = alpha
+        self.bound_gamma = bound_gamma
+        self.bound_alpha = bound_alpha
+        self.dt = dt
+        self.cur_step = 0
+        self.real_step = 0
+        self.step_batchsize = step_batchsize
+
+        (self.pre_x, self.pre_y) = self.generate_correlated_noise()
+
+        self.boundstepper = boundstepper
+
+        # preprocess hurst exponent for movement regimens
+        H = self.alpha / 2
+        bound_H = self.bound_alpha / 2
+
+        # preprocess msd normalization for movement regimens
+        self.norm_msd = sqrt(2 * self.gamma) * self.dt ** H
+        self.bound_norm_msd = sqrt(2 * self.bound_gamma) * self.dt ** bound_H
+
+        super().__init__()
+
+    def generate_step(self, *args, **kwargs):
+        # If the trajectory exhausts the generated steps, regenerate
+        if self.cur_step >= self.step_batchsize:
+            adj_batchsize = self.step_batchsize - self.real_step
+            if adj_batchsize <= 0:
+                adj_batchsize = self.step_batchsize
+            self.regenerate_correlated_noise()
+
+        # normalize noise to the expected MSD
+        dx = self.norm_msd * self.pre_x[self.cur_step]
+        dy = self.norm_msd * self.pre_y[self.cur_step]
+        self.real_step += 1
+        self.cur_step += 1
+
+        return np.array([dx, dy])
+
+    def generate_bound_step(self, *args, **kwargs):
+        if self.boundstepper == None:
+            if self.cur_step >= self.step_batchsize:
+                adj_batchsize = self.step_batchsize - self.real_step
+                if adj_batchsize <= 0:
+                    adj_batchsize = self.step_batchsize
+                self.regenerate_correlated_noise()
+
+            # normalize noise to the expected bound MSD
+            dx = self.bound_norm_msd * self.pre_x[self.cur_step]
+            dy = self.bound_norm_msd * self.pre_y[self.cur_step]
+        # When a different bound stepper is called, it will be employed here
+        else:
+            (dx, dy) = self.boundstepper.generate_bound_step()
+
+        self.real_step += 1
+        self.cur_step += 1
+
+        return np.array([dx, dy])
+
+    def generate_correlated_noise(
+            self,
+            steps: int = None,
+            fle_random_seed: int = None,
+    ):
+        """
+        Generates a series of correlated noise values.
+        Based on the implementation by Yaojun Zhang in
+        J.S. Lucas, Y. Zhang, O.K. Dudko, and C. Murre,
+        Cell 158, 339–352, 2014
+        https://doi.org/10.1016/j.cell.2014.05.036
+
+        Which is based on the algorithm of
+        C.R. Dietrich and G.N. Newsam,
+        SIAM J. Sci. Comput., 18(4), 1088–1107.
+        https://doi.org/10.1137/S1064827592240555
+
+        Parameters
+        ----------
+        steps: number of time steps
+        dt
+        gamma
+        alpha: Correlation parameter. 1 is no correlation, [1,2] is positive correlation,
+                (0,1) is anticorrelation.
+
+        Returns
+        -------
+        """
+        if steps is None:
+            steps = self.step_batchsize
+
+        # Compute correlation vector R.
+        pre_r = np.zeros(shape=(steps + 1))
+        pre_r[0] = 1.0
+        for k in range(1, steps + 1):
+            fd_addition = (
+                                  (k + 1) ** self.alpha - 2 * (k ** self.alpha) + (k - 1) ** self.alpha
+                          ) / 2
+            pre_r[k] = fd_addition
+        nrel = len(pre_r)
+        r = np.zeros(2 * nrel - 2)
+        r[:nrel] = pre_r
+        reverse_r = np.flip(pre_r)
+        r[nrel - 1:] = reverse_r[:-1]
+
+        # Fourier transform pre-computed values earlier
+        # Corresponds to step a on page 1091 of Dietrich & Newsam,
+
+        s = np.real(np.fft.fft(r)) / (2 * steps)
+        strans = np.lib.scimath.sqrt(s)
+
+        if fle_random_seed:
+            np.random.seed(fle_random_seed)
+
+        # Generate randomly distributed points in the complex plane (step b)
+        randnorm_complex = np.random.normal(size=(2 * steps)) + 1j * np.random.normal(
+            size=(2 * steps)
+        )
+        # Compute FFT: (step c),
+        second_fft_x = np.fft.fft(np.multiply(strans, randnorm_complex))
+
+        randnorm_complex = np.random.normal(size=(2 * steps)) + 1j * np.random.normal(
+            size=(2 * steps)
+        )
+        second_fft_y = np.fft.fft(np.multiply(strans, randnorm_complex))
+
+        # Scale results for final use.
+        # Hurst exponent
+        # H = self.alpha / 2
+        # bound_H = self.bound_alpha / 2
+        # Length scale for process
+        # norm_msd = sqrt(2 * self.gamma) * self.dt ** H
+        # bound_norm_msd = sqrt(2 * self.bound_gamma) * self.dt ** bound_H
+        # If gamma is ordinarily in m^2/s,
+        # to convert to m^2/ s^alpha,
+        # multiply by  1 s / s^alpha,
+        # 1 s /
+
+        # Store correlated noise values. Step d.
+        # x_sreps = norm_msd * np.real(second_fft_x[0:steps])
+        # y_steps = norm_msd * np.real(second_fft_y[0:steps])
+        # bound_x_steps = bound_norm_msd * np.real(second_fft_x[0:steps])
+        # bound_y_steps = bound_norm_msd * np.real(second_fft_y[0:steps])
+
+        x_noise = np.real(second_fft_x[0:steps])
+        y_noise = np.real(second_fft_y[0:steps])
+
+        return x_noise, y_noise
+
+    def regenerate_correlated_noise(self, batch_size: int = None):
+        """
+        If the number of steps in the current batch have been exhausted, or an external circumstance dictates the
+        generation of new noise, this produces a new set of correlated noise.
+        Assigns noise 'in-place' as class attribute.
+
+        Please note that this causes the previous noise correlations to be 'forgotten'
+        and so the new noise batch will not contain any correlations with the previous batch- it is, in effect,
+        a completely new noise source.
+
+        Parameters
+        ----------
+        batch_size: Number of steps in correlated noise to generate
+
+        Returns
+        -------
+
+        """
+
+        if batch_size is None:
+            # Adjusts batch size of generation
+            temp_batch_size = self.step_batchsize - self.real_step
+
+            # Sometimes batches become too small for fft
+            if temp_batch_size < 100:
+                temp_batch_size = 100
+            batch_size = temp_batch_size
+
+        (self.pre_x, self.pre_y) = self.generate_correlated_noise(steps=batch_size)
+        self.cur_step = 0
 
 
 class UniformSteps(Stepper):
@@ -379,192 +597,6 @@ class ExperimentalAngleSteps(Stepper):
 
         return self.generate_step(prev_step, prev_angle) / 10
 
-
-class FBMSteps(Stepper):
-    def __init__(
-        self,
-        step_batchsize: int = 200,
-        gamma: float = 0.00375,
-        alpha: float = 0.448,
-        bound_gamma: float = 0.00075,
-        bound_alpha: float = 0.373,
-        dt: float = 1,
-        boundstepper: Stepper = None,
-    ):
-        """
-        Stepper which generates steps consistent with Fractional Brownian Motion (i.e. correlated Gaussian noise with
-        no driving force in the overdamped limit). Uses the method of Dietrich and Newsam, 1997
-        (DOI: 10.1137/S1064827592240555).
-
-        Parameters
-        ----------
-        step_batchsize
-        gamma
-        alpha
-        bound_gamma
-        bound_alpha
-        dt
-        boundstepper
-        """
-
-        self.gamma = gamma
-        self.alpha = alpha
-        self.bound_gamma = bound_gamma
-        self.bound_alpha = bound_alpha
-        self.dt = dt
-        self.cur_step = 0
-        self.real_step = 0
-        self.step_batchsize = step_batchsize
-
-        (self.pre_x, self.pre_y) = self.generate_correlated_noise()
-
-        self.boundstepper = boundstepper
-
-        # preprocess hurst exponent for movement regimens
-        H = self.alpha / 2
-        bound_H = self.bound_alpha / 2
-
-        # preprocess msd normalization for movement regimens
-        self.norm_msd = sqrt(2 * self.gamma) * self.dt ** H
-        self.bound_norm_msd = sqrt(2 * self.bound_gamma) * self.dt ** bound_H
-
-        super().__init__()
-
-    def generate_step(self, *args, **kwargs):
-        # If the trajectory exhausts the generated steps, regenerate
-        if self.cur_step >= self.step_batchsize:
-            adj_batchsize = self.step_batchsize - self.real_step
-            if adj_batchsize <= 0:
-                adj_batchsize = self.step_batchsize
-            self.regenerate_correlated_noise()
-            
-        # normalize noise to the expected MSD
-        dx = self.norm_msd * self.pre_x[self.cur_step]
-        dy = self.norm_msd * self.pre_y[self.cur_step]
-        self.real_step += 1
-        self.cur_step += 1
-
-        return np.array([dx, dy])
-
-    def generate_bound_step(self, *args, **kwargs):
-        if self.boundstepper == None:
-            if self.cur_step >= self.step_batchsize:
-                adj_batchsize = self.step_batchsize - self.real_step
-                if adj_batchsize <= 0:
-                    adj_batchsize = self.step_batchsize
-                self.regenerate_correlated_noise()
-            
-            # normalize noise to the expected bound MSD
-            dx = self.bound_norm_msd * self.pre_x[self.cur_step]
-            dy = self.bound_norm_msd * self.pre_y[self.cur_step]
-        # When a different bound stepper is called, it will be employed here
-        else:
-            (dx, dy) = self.boundstepper.generate_bound_step()
-
-        self.real_step += 1
-        self.cur_step += 1
-
-        return np.array([dx, dy])
-
-    def generate_correlated_noise(
-        self,
-        steps: int = None,
-        fle_random_seed: int = None,
-    ):
-        """
-        Generates a series of correlated noise values.
-        Based on the implementation by Yaojun Zhang in
-        J.S. Lucas, Y. Zhang, O.K. Dudko, and C. Murre,
-        Cell 158, 339–352, 2014
-        https://doi.org/10.1016/j.cell.2014.05.036
-
-        Which is based on the algorithm of
-        C.R. Dietrich and G.N. Newsam,
-        SIAM J. Sci. Comput., 18(4), 1088–1107.
-        https://doi.org/10.1137/S1064827592240555
-
-        Parameters
-        ----------
-        steps
-        dt
-        gamma
-        alpha: Correlation parameter. 1 is no correlation, [1,2] is positive correlation,
-                (0,1) is anticorrelation.
-
-        Returns
-        -------
-        """
-        if steps is None:
-            steps = self.step_batchsize
-
-        # Compute correlation vector R.
-        pre_r = np.zeros(shape=(steps + 1))
-        pre_r[0] = 1.0
-        for k in range(1, steps + 1):
-            fd_addition = (
-                (k + 1) ** self.alpha - 2 * (k ** self.alpha) + (k - 1) ** self.alpha
-            ) / 2
-            pre_r[k] = fd_addition
-        nrel = len(pre_r)
-        r = np.zeros(2 * nrel - 2)
-        r[:nrel] = pre_r
-        reverse_r = np.flip(pre_r)
-        r[nrel - 1 :] = reverse_r[:-1]
-
-        # Fourier transform pre-computed values earlier
-        # Corresponds to step a on page 1091 of Dietrich & Newsam,
-
-        s = np.real(np.fft.fft(r)) / (2 * steps)
-        strans = np.lib.scimath.sqrt(s)
-
-        if fle_random_seed:
-            np.random.seed(fle_random_seed)
-
-        # Generate randomly distributed points in the complex plane (step b)
-        randnorm_complex = np.random.normal(size=(2 * steps)) + 1j * np.random.normal(
-            size=(2 * steps)
-        )
-        # Compute FFT: (step c),
-        second_fft_x = np.fft.fft(np.multiply(strans, randnorm_complex))
-
-        randnorm_complex = np.random.normal(size=(2 * steps)) + 1j * np.random.normal(
-            size=(2 * steps)
-        )
-        second_fft_y = np.fft.fft(np.multiply(strans, randnorm_complex))
-
-        # Scale results for final use.
-        # Hurst exponent
-        # H = self.alpha / 2
-        # bound_H = self.bound_alpha / 2
-        # Length scale for process
-        # norm_msd = sqrt(2 * self.gamma) * self.dt ** H
-        # bound_norm_msd = sqrt(2 * self.bound_gamma) * self.dt ** bound_H
-        # If gamma is ordinarily in m^2/s,
-        # to convert to m^2/ s^alpha,
-        # multiply by  1 s / s^alpha,
-        # 1 s /
-
-        # Store correlated noise values. Step d.
-        # x_sreps = norm_msd * np.real(second_fft_x[0:steps])
-        # y_steps = norm_msd * np.real(second_fft_y[0:steps])
-        # bound_x_steps = bound_norm_msd * np.real(second_fft_x[0:steps])
-        # bound_y_steps = bound_norm_msd * np.real(second_fft_y[0:steps])
-
-        x_noise = np.real(second_fft_x[0:steps])
-        y_noise = np.real(second_fft_y[0:steps])
-
-        return x_noise, y_noise
-
-    def regenerate_correlated_noise(self, *args, **kwargs):
-        # This adjusts the batchsize to
-        temp_batch_size = self.step_batchsize - self.real_step
-
-        # someitmes batches become too small for fft
-        if temp_batch_size < 100:
-            temp_batch_size = 100
-
-        (self.pre_x, self.pre_y) = self.generate_correlated_noise(steps=temp_batch_size)
-        self.cur_step = 0
 
 
 def compute_drag(prev_step: None, spring_constant: float = -0.5):
