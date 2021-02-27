@@ -17,6 +17,7 @@ from YGRW.steps import (
     UniformAngle,
     ExperimentalIndependentAngle,
     FBMSteps,
+    FBMRandomBoostSteps,
 )
 
 
@@ -89,3 +90,25 @@ def test_fbm_stepper():
         x, y = fbm_stepper.generate_step()
         assert prev_x != x
         assert prev_y != y
+
+
+def test_fbmboost_stepper():
+
+    bs = FBMRandomBoostSteps(boost_probability=1, boost_coefficient=0)
+    assert np.array_equal(bs.generate_step(), [0, 0])
+
+    np.random.seed(42)
+    bs = FBMRandomBoostSteps(boost_probability=0, boost_coefficient=0)
+    first_step = bs.generate_step()
+
+    np.random.seed(42)
+    fbm = FBMSteps()
+    second_step = fbm.generate_step()
+
+    assert np.array_equal(first_step, second_step)
+
+    np.random.seed(42)
+    bs = FBMRandomBoostSteps(boost_probability=1, boost_coefficient=2)
+    third_step = bs.generate_step()
+
+    assert np.array_equal(2 * second_step, third_step)

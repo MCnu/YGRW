@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import gengamma
 import os as os
-from random import sample
+from random import sample, random
 from abc import ABC, abstractmethod
 from YGRW.data_interp import JumpDistFromAngle, AngleFromAngle
 
@@ -271,6 +271,56 @@ class FBMSteps(Stepper):
 
         (self.pre_x, self.pre_y) = self.generate_correlated_noise(steps=batch_size)
         self.cur_step = 0
+
+
+class FBMRandomBoostSteps(FBMSteps):
+    """
+    FBM that periodically takes a larger step than necessary.
+    A speculatie model of active transport that will randomly boost steps which respect the underlying
+    noise distribution.
+
+    Use only for cytoplasmic diffusion and not for bound-zone dynamics.
+    """
+
+    def __init__(
+        self,
+        FBM_kwargs: dict = None,
+        boost_probability: float = 0,
+        boost_coefficient: float = 1,
+    ):
+        """
+        params:
+        FBM Kwargs: Keyword arguments for FBM steps which must be passed in when the stepper is instantiated.
+        boost_probability: probability p that each step will be 'boosted' (multiplied by a coefficient)
+        boost_coefficient: if a step will be boosted, scale it by this coefficient
+        """
+
+        if FBM_kwargs is None:
+            FBM_kwargs = {}
+        super().__init__(**FBM_kwargs)
+        self.boost_probability = boost_probability
+        self.boost_coefficient = boost_coefficient
+
+    def generate_step(self, *args, **kwargs):
+        # If the trajectory exhausts the generated steps, regenerate
+        if self.cur_step >= self.step_batchsize:
+            adj_batchsize = self.step_batchsize - self.real_step
+            if adj_batchsize <= 0:
+                adj_batchsize = self.step_batchsize
+            self.regenerate_correlated_noise()
+
+        # normalize noise to the expected MSD
+        dx = self.norm_msd * self.pre_x[self.cur_step]
+        dy = self.norm_msd * self.pre_y[self.cur_step]
+        self.real_step += 1
+        self.cur_step += 1
+
+        step = np.array([dx, dy])
+
+        if random() <= self.boost_probability:
+            step *= self.boost_coefficient
+
+        return step
 
 
 class UniformSteps(Stepper):
