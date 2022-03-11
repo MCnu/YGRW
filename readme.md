@@ -29,8 +29,9 @@ are working on your machine.
 #### Citation
 If you use any code from this repository for your own experiments or as a starting point for the design of your own
 simulator, please consider citing our manuscript:
-.....
-M.C. Sumner, S.B. Torrisi, Donna Garvey Bricker, Jason Bricker
+
+`Random sub-diffusion and capture of genes by the nuclear pore reduces dynamics and coordinates inter-chromosomal movement, 
+M.C. Sumner, S.B. Torrisi, D.G. Bricker, J. Bricker, eLife 2021;10:e66238 doi: 10.7554/eLife.66238.`
 
 
 #### Acknowledgements
